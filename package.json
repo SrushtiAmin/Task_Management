@@ -6,7 +6,12 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.1",
-    "uuid": "^13.0.0"
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^13.0.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -27,8 +32,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+      "build": "tsc",
+      "start": "node dist/server.js",
+      "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/server.ts",
+      "lint": "eslint . --ext .ts,.js"
+   },
   "keywords": [],
   "author": "",
   "license": "ISC",
