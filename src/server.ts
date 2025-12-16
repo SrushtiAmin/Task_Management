@@ -5,6 +5,7 @@ import connectDb from "./config/database";
 import authRoutes from "./routes/authRoutes";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
+import projectRoutes from "./routes/projectRoutes";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/projects", projectRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
