@@ -1,11 +1,11 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model, Types, Document } from "mongoose";
 
-export interface IProject {
+export interface IProject extends Document {
     name: string;
     description?: string;
     createdBy: Types.ObjectId;
     members: Types.ObjectId[];
-    status: "active" | "completed";
+    status: "active" | "completed" | "archived";
     startDate?: Date;
     endDate?: Date;
 }
@@ -15,6 +15,7 @@ const projectSchema = new Schema<IProject>(
         name: {
             type: String,
             required: true,
+            trim: true,
         },
 
         description: {
@@ -36,16 +37,15 @@ const projectSchema = new Schema<IProject>(
 
         status: {
             type: String,
-            enum: ["active", "completed"],
+            enum: ["active", "completed", "archived"],
             default: "active",
         },
 
         startDate: Date,
         endDate: Date,
     },
-    {
-        timestamps: true,
-    }
+    { timestamps: true }
 );
 
-export const Project = model<IProject>("Project", projectSchema);
+const Project = model<IProject>("Project", projectSchema);
+export default Project;

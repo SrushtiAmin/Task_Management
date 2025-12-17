@@ -6,6 +6,10 @@ import authRoutes from "./routes/authRoutes";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import projectRoutes from "./routes/projectRoutes";
+import taskRoutes from "./routes/taskRoutes";
+import { errorHandler } from "./middleware/errorHandler";
+import dashboardRoutes from "./routes/dashRoutes";
+import commentRoutes from "./routes/commentRoutes";
 
 dotenv.config();
 
@@ -26,6 +30,10 @@ app.get("/", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api", commentRoutes);
+app.use("/api", dashboardRoutes);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

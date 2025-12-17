@@ -1,29 +1,24 @@
 import { Request, Response } from "express";
-import { Project } from "../models/Project";
-import User from "../models/User";
+import Project from "../models/Project";
 import { AuthRequest } from "../middleware/auth";
+import mongoose from "mongoose";
 
 export class ProjectController {
 
     // CREATE PROJECT (PM only)
     static async createProject(req: AuthRequest, res: Response) {
         try {
-            if (req.user?.role !== "pm") {
-                return res.status(403).json({ message: "Only PM can create projects" });
-            }
-
             const { name, description, startDate, endDate } = req.body;
 
             if (!name) {
-                return res.status(400).json({ message: "Project name is required" });
+                return res.status(400).json({ message: "Project name required" });
             }
 
             const project = await Project.create({
                 name,
                 description,
-                createdBy: req.user.userId,
-                members: [req.user.userId],
-                status: "active",
+                createdBy: new mongoose.Types.ObjectId(req.user!.userId),
+                members: [new mongoose.Types.ObjectId(req.user!.userId)],
                 startDate,
                 endDate,
             });
@@ -34,17 +29,15 @@ export class ProjectController {
         }
     }
 
-    // GET ALL PROJECTS (PM sees own, member sees assigned)
+    // GET ALL PROJECTS
     static async getProjects(req: AuthRequest, res: Response) {
         try {
-            const userId = req.user?.userId;
-
             const projects = await Project.find({
-                members: userId,
-            }).populate("createdBy members", "name email role");
+                members: req.user!.userId,
+            }).populate("createdBy", "name email");
 
             res.status(200).json(projects);
-        } catch (error) {
+        } catch {
             res.status(500).json({ message: "Failed to fetch projects" });
         }
     }
@@ -53,18 +46,14 @@ export class ProjectController {
     static async getProjectById(req: AuthRequest, res: Response) {
         try {
             const project = await Project.findById(req.params.id)
-                .populate("createdBy members", "name email role");
+                .populate("members", "name email");
 
             if (!project) {
                 return res.status(404).json({ message: "Project not found" });
             }
 
-            if (!project.members.some(m => m.toString() === req.user?.userId)) {
-                return res.status(403).json({ message: "Access denied" });
-            }
-
             res.status(200).json(project);
-        } catch (error) {
+        } catch {
             res.status(500).json({ message: "Failed to fetch project" });
         }
     }
@@ -78,16 +67,16 @@ export class ProjectController {
                 return res.status(404).json({ message: "Project not found" });
             }
 
-            if (project.createdBy.toString() !== req.user?.userId) {
-                return res.status(403).json({ message: "Only PM can update project" });
+            if (project.createdBy.toString() !== req.user!.userId) {
+                return res.status(403).json({ message: "Forbidden" });
             }
 
             Object.assign(project, req.body);
             await project.save();
 
             res.status(200).json(project);
-        } catch (error) {
-            res.status(500).json({ message: "Failed to update project" });
+        } catch {
+            res.status(500).json({ message: "Update failed" });
         }
     }
 
@@ -100,18 +89,18 @@ export class ProjectController {
                 return res.status(404).json({ message: "Project not found" });
             }
 
-            if (project.createdBy.toString() !== req.user?.userId) {
-                return res.status(403).json({ message: "Only PM can delete project" });
+            if (project.createdBy.toString() !== req.user!.userId) {
+                return res.status(403).json({ message: "Forbidden" });
             }
 
             await project.deleteOne();
-            res.status(200).json({ message: "Project deleted successfully" });
-        } catch (error) {
-            res.status(500).json({ message: "Failed to delete project" });
+            res.status(200).json({ message: "Project deleted" });
+        } catch {
+            res.status(500).json({ message: "Delete failed" });
         }
     }
 
-    // ADD MEMBER TO PROJECT (PM only)
+    // ADD MEMBER (PM only)
     static async addMember(req: AuthRequest, res: Response) {
         try {
             const { memberId } = req.body;
@@ -121,24 +110,19 @@ export class ProjectController {
                 return res.status(404).json({ message: "Project not found" });
             }
 
-            if (project.createdBy.toString() !== req.user?.userId) {
-                return res.status(403).json({ message: "Only PM can add members" });
+            if (project.createdBy.toString() !== req.user!.userId) {
+                return res.status(403).json({ message: "Forbidden" });
             }
 
-            const user = await User.findById(memberId);
-            if (!user) {
-                return res.status(404).json({ message: "User not found" });
+            if (project.members.includes(memberId)) {
+                return res.status(400).json({ message: "Member already added" });
             }
 
-            if (project.members.includes(user._id)) {
-                return res.status(400).json({ message: "User already a member" });
-            }
-
-            project.members.push(user._id);
+            project.members.push(memberId);
             await project.save();
 
-            res.status(200).json({ message: "Member added successfully", project });
-        } catch (error) {
+            res.status(200).json(project);
+        } catch {
             res.status(500).json({ message: "Failed to add member" });
         }
     }
