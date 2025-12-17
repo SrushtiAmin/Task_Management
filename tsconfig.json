@@ -16,7 +16,8 @@
     "noUnusedParameters": false
   },
   "include": [
-    "src"
+    "src",
+    "uploads/upload.ts"
   ],
   "exclude": [
     "node_modules",

@@ -13,6 +13,17 @@ const swaggerOptions: swaggerJSDoc.Options = {
                 url: "http://localhost:3000",
             },
         ],
+
+        // THIS CONTROLS ORDER
+        tags: [
+            { name: "Authentication", description: "User authentication APIs" },
+            { name: "Projects", description: "Project management APIs" },
+            { name: "Tasks", description: "Task management APIs" },
+            { name: "Comments", description: "Task comments APIs" },
+            { name: "Uploads", description: "File upload APIs" },
+            { name: "Dashboard", description: "Dashboard APIs" },
+        ],
+
         components: {
             securitySchemes: {
                 bearerAuth: {
@@ -22,13 +33,16 @@ const swaggerOptions: swaggerJSDoc.Options = {
                 },
             },
         },
+
         security: [
             {
                 bearerAuth: [],
             },
         ],
     },
-    apis: ["./src/routes/**/*.ts"]
+
+    // correct glob
+    apis: ["./src/routes/**/*.ts"],
 };
 
 export const swaggerSpec = swaggerJSDoc(swaggerOptions);

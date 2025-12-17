@@ -1,6 +1,5 @@
 import { Router } from "express";
 import auth from "../middleware/auth";
-import { upload } from "../middleware/upload";
 import { TaskController } from "../controllers/taskController";
 
 const router = Router();
@@ -33,12 +32,15 @@ const router = Router();
  *             properties:
  *               title:
  *                 type: string
+ *                 example: Design database schema
  *               description:
  *                 type: string
  *               project:
  *                 type: string
+ *                 description: Project ID
  *               assignedTo:
  *                 type: string
+ *                 description: User ID
  *               priority:
  *                 type: string
  *                 enum: [low, medium, high, critical]
@@ -55,7 +57,7 @@ router.post("/", auth, TaskController.createTask);
  * @swagger
  * /api/tasks:
  *   get:
- *     summary: Get tasks
+ *     summary: Get tasks (PM: all, Member: assigned)
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -79,6 +81,10 @@ router.get("/", auth, TaskController.getTasks);
  *         required: true
  *         schema:
  *           type: string
+ *         description: Task ID
+ *     responses:
+ *       200:
+ *         description: Task details
  */
 router.get("/:id", auth, TaskController.getTask);
 
@@ -86,10 +92,37 @@ router.get("/:id", auth, TaskController.getTask);
  * @swagger
  * /api/tasks/{id}:
  *   put:
- *     summary: Update task
+ *     summary: Update task details
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high, critical]
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Task updated
  */
 router.put("/:id", auth, TaskController.updateTask);
 
@@ -101,6 +134,16 @@ router.put("/:id", auth, TaskController.updateTask);
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
+ *     responses:
+ *       200:
+ *         description: Task deleted
  */
 router.delete("/:id", auth, TaskController.deleteTask);
 
@@ -112,27 +155,29 @@ router.delete("/:id", auth, TaskController.deleteTask);
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- */
-router.patch("/:id/status", auth, TaskController.updateStatus);
-
-/**
- * @swagger
- * /api/tasks/{id}/upload:
- *   post:
- *     summary: Upload attachment
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
  *     requestBody:
+ *       required: true
  *       content:
- *         multipart/form-data:
+ *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - status
  *             properties:
- *               file:
+ *               status:
  *                 type: string
- *                 format: binary
+ *                 enum: [todo, in_progress, in_review, done]
+ *     responses:
+ *       200:
+ *         description: Status updated
  */
-router.post("/:id/upload", auth, upload.single("file"), TaskController.uploadFile);
+router.patch("/:id/status", auth, TaskController.updateStatus);
 
 export default router;
