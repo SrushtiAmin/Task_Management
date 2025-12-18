@@ -22,7 +22,7 @@ Create a `.env` file in the root directory of the project and configure the foll
 PORT=3000  
 MONGODB_URI=mongodb://localhost:27017/taskdb  
 JWT_SECRET=your_jwt_secret  
-JWT_EXPIRE=1d  
+JWT_EXPIRE=7d  
 NODE_ENV=development  
 UPLOAD_DIR=uploads  
 MAX_FILE_SIZE=5242880  
