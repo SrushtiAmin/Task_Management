@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 import User from "../models/User";
 
 export class AuthController {
@@ -62,7 +62,7 @@ export class AuthController {
             const token = jwt.sign(
                 { userId: user._id, role: user.role },
                 process.env.JWT_SECRET as string,
-                { expiresIn: "7d" }
+                { expiresIn:"7d"}
             );
 
             res.status(200).json({ token });

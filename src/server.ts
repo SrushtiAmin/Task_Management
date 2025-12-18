@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import path from "path";
 import connectDb from "./config/database";
 import authRoutes from "./routes/authRoutes";
 import swaggerUi from "swagger-ui-express";
@@ -17,8 +18,17 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // required for multer
 
 connectDb();
+
+// serve uploaded files
+app.use(
+    "/uploads",
+    express.static(
+        path.join(process.cwd(), process.env.UPLOAD_DIR || "uploads")
+    )
+);
 
 // Swagger
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -33,6 +43,8 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api", commentRoutes);
 app.use("/api", dashboardRoutes);
+
+// Error handler (must be last)
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
