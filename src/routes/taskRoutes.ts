@@ -57,7 +57,7 @@ router.post("/", auth, TaskController.createTask);
  * @swagger
  * /api/tasks:
  *   get:
- *     summary: Get tasks (PM: all, Member: assigned)
+ *     summary: "Get tasks (PM: all, Member: assigned)"
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
