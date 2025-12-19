@@ -1,7 +1,23 @@
 import { Router } from "express";
-import auth from "../middleware/auth";
-import { DashboardController } from "../controllers/dashController";
+import authMiddleware from "../middleware/auth";
+import { getDashboard } from "../controllers/dashController";
 
 const router = Router();
-router.get("/dashboard", auth, DashboardController.getStats);
+
+/**
+ * @swagger
+ * /api/dashboard:
+ *   get:
+ *     summary: Get dashboard data for PM or Member
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard data
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/dashboard", authMiddleware, getDashboard);
+
 export default router;
