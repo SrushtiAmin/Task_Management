@@ -41,7 +41,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
     },
 
     // correct glob
-    apis: ["./src/routes/**/*.ts"],
+    apis: ["./src/swagger/**/*.ts"],
 };
 
 export const swaggerSpec = swaggerJSDoc(swaggerOptions);
