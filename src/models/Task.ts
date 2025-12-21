@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from "mongoose";
+import { Schema, model, Types, Document } from 'mongoose';
 
 export interface ITask extends Document {
   title: string;
@@ -6,8 +6,8 @@ export interface ITask extends Document {
   project: Types.ObjectId;
   assignedTo: Types.ObjectId;
   createdBy: Types.ObjectId;
-  priority: "low" | "medium" | "high" | "critical";
-  status: "todo" | "in_progress" | "in_review" | "done";
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'todo' | 'in_progress' | 'in_review' | 'done';
   dueDate: Date;
   attachments: {
     filename: string;
@@ -24,32 +24,32 @@ const taskSchema = new Schema<ITask>(
 
     project: {
       type: Schema.Types.ObjectId,
-      ref: "Project",
+      ref: 'Project',
       required: true,
     },
 
     assignedTo: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
     },
 
     createdBy: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
     },
 
     priority: {
       type: String,
-      enum: ["low", "medium", "high", "critical"],
-      default: "medium",
+      enum: ['low', 'medium', 'high', 'critical'],
+      default: 'medium',
     },
 
     status: {
       type: String,
-      enum: ["todo", "in_progress", "in_review", "done"],
-      default: "todo",
+      enum: ['todo', 'in_progress', 'in_review', 'done'],
+      default: 'todo',
     },
 
     dueDate: {
@@ -61,7 +61,7 @@ const taskSchema = new Schema<ITask>(
       {
         filename: String,
         path: String,
-        uploadedBy: { type: Schema.Types.ObjectId, ref: "User" },
+        uploadedBy: { type: Schema.Types.ObjectId, ref: 'User' },
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
@@ -69,4 +69,4 @@ const taskSchema = new Schema<ITask>(
   { timestamps: true }
 );
 
-export default model<ITask>("Task", taskSchema);
+export default model<ITask>('Task', taskSchema);

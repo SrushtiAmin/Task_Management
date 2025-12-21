@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { projectStatus } from "../constants/projectStatus";
+import { z } from 'zod';
+import { projectStatus } from '../constants/projectStatus';
 
 /**
  * CREATE PROJECT VALIDATION
@@ -8,19 +8,17 @@ export const createProjectSchema = z
   .object({
     name: z
       .string()
-      .min(1, "Project name is required")
-      .min(3, "Project name must be at least 3 characters long"),
+      .min(1, 'Project name is required')
+      .min(3, 'Project name must be at least 3 characters long'),
 
-    description: z
-      .string()
-      .optional(),
+    description: z.string().optional(),
 
     startDate: z
       .string()
       .optional()
       .refine(
         (date) => !date || !isNaN(Date.parse(date)),
-        "Start date must be a valid date"
+        'Start date must be a valid date'
       ),
 
     endDate: z
@@ -28,7 +26,7 @@ export const createProjectSchema = z
       .optional()
       .refine(
         (date) => !date || !isNaN(Date.parse(date)),
-        "End date must be a valid date"
+        'End date must be a valid date'
       ),
 
     status: z
@@ -40,7 +38,7 @@ export const createProjectSchema = z
           val === projectStatus.active ||
           val === projectStatus.completed ||
           val === projectStatus.archived,
-        "Status must be active, completed, or archived"
+        'Status must be active, completed, or archived'
       ),
   })
   .refine(
@@ -49,8 +47,8 @@ export const createProjectSchema = z
       return new Date(data.endDate) > new Date(data.startDate);
     },
     {
-      message: "End date must be after start date",
-      path: ["endDate"],
+      message: 'End date must be after start date',
+      path: ['endDate'],
     }
   );
 
@@ -62,19 +60,17 @@ export const updateProjectSchema = z
   .object({
     name: z
       .string()
-      .min(3, "Project name must be at least 3 characters long")
+      .min(3, 'Project name must be at least 3 characters long')
       .optional(),
 
-    description: z
-      .string()
-      .optional(),
+    description: z.string().optional(),
 
     startDate: z
       .string()
       .optional()
       .refine(
         (date) => !date || !isNaN(Date.parse(date)),
-        "Start date must be a valid date"
+        'Start date must be a valid date'
       ),
 
     endDate: z
@@ -82,7 +78,7 @@ export const updateProjectSchema = z
       .optional()
       .refine(
         (date) => !date || !isNaN(Date.parse(date)),
-        "End date must be a valid date"
+        'End date must be a valid date'
       ),
 
     status: z
@@ -94,7 +90,7 @@ export const updateProjectSchema = z
           val === projectStatus.active ||
           val === projectStatus.completed ||
           val === projectStatus.archived,
-        "Status must be active, completed, or archived"
+        'Status must be active, completed, or archived'
       ),
   })
   .refine(
@@ -103,7 +99,7 @@ export const updateProjectSchema = z
       return new Date(data.endDate) > new Date(data.startDate);
     },
     {
-      message: "End date must be after start date",
-      path: ["endDate"],
+      message: 'End date must be after start date',
+      path: ['endDate'],
     }
   );

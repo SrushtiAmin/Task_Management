@@ -1,8 +1,8 @@
 export const taskStatus = {
-  todo: "todo",
-  inProgress: "in_progress",
-  inReview: "in_review",
-  done: "done",
+  todo: 'todo',
+  inProgress: 'in_progress',
+  inReview: 'in_review',
+  done: 'done',
 } as const;
 
 export const taskStatusFlow = [

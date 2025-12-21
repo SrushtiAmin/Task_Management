@@ -37,7 +37,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "nodemon --watch \"src/**/*.ts\" --exec ts-node src/server.ts",
-    "lint": "eslint . --ext .ts,.js"
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write ."
   },
   "keywords": [],
   "author": "",

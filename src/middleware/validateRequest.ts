@@ -1,9 +1,8 @@
-import { Request, Response, NextFunction } from "express";
-import { ZodError, ZodSchema } from "zod";
+import { Request, Response, NextFunction } from 'express';
+import { ZodError, ZodSchema } from 'zod';
 
 export const validateRequest =
-  (schema: ZodSchema) =>
-  (req: Request, res: Response, next: NextFunction) => {
+  (schema: ZodSchema) => (req: Request, res: Response, next: NextFunction) => {
     try {
       schema.parse(req.body);
       next();
@@ -11,10 +10,10 @@ export const validateRequest =
       if (error instanceof ZodError) {
         return res.status(400).json({
           statusCode: 400,
-          error: "Bad Request",
-          message: "Validation failed",
+          error: 'Bad Request',
+          message: 'Validation failed',
           details: error.issues.map((issue) => ({
-            field: issue.path.join("."),
+            field: issue.path.join('.'),
             message: issue.message,
           })),
         });

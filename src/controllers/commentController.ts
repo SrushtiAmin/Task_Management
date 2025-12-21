@@ -1,19 +1,18 @@
-import { Response } from "express";
-import Comment from "../models/Comments";
-import { AuthRequest } from "../middleware/auth";
-import mongoose from "mongoose";
+import { Response } from 'express';
+import Comment from '../models/Comments';
+import { AuthRequest } from '../middleware/auth';
+import mongoose from 'mongoose';
 
 export class CommentController {
-
   // POST /api/tasks/:id/comments
   static async addComment(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
+        return res.status(401).json({ message: 'Unauthorized' });
       }
 
       if (!req.body.content) {
-        return res.status(400).json({ message: "Comment content required" });
+        return res.status(400).json({ message: 'Comment content required' });
       }
 
       const comment = await Comment.create({
@@ -24,7 +23,7 @@ export class CommentController {
 
       res.status(201).json(comment);
     } catch (error) {
-      res.status(500).json({ message: "Failed to add comment" });
+      res.status(500).json({ message: 'Failed to add comment' });
     }
   }
 
@@ -33,11 +32,11 @@ export class CommentController {
     try {
       const comments = await Comment.find({
         task: req.params.id,
-      }).populate("user", "name email");
+      }).populate('user', 'name email');
 
       res.json(comments);
     } catch {
-      res.status(500).json({ message: "Failed to fetch comments" });
+      res.status(500).json({ message: 'Failed to fetch comments' });
     }
   }
 
@@ -45,22 +44,22 @@ export class CommentController {
   static async deleteComment(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
+        return res.status(401).json({ message: 'Unauthorized' });
       }
 
       const comment = await Comment.findById(req.params.id);
       if (!comment) {
-        return res.status(404).json({ message: "Comment not found" });
+        return res.status(404).json({ message: 'Comment not found' });
       }
 
       if (comment.user.toString() !== req.user.userId) {
-        return res.status(403).json({ message: "Forbidden" });
+        return res.status(403).json({ message: 'Forbidden' });
       }
 
       await comment.deleteOne();
-      res.json({ message: "Comment deleted" });
+      res.json({ message: 'Comment deleted' });
     } catch {
-      res.status(500).json({ message: "Delete failed" });
+      res.status(500).json({ message: 'Delete failed' });
     }
   }
 }

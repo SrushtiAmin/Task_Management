@@ -1,4 +1,4 @@
-import { Schema, model, Types, Document } from "mongoose";
+import { Schema, model, Types, Document } from 'mongoose';
 
 export interface IComment extends Document {
   task: Types.ObjectId;
@@ -10,12 +10,12 @@ const commentSchema = new Schema<IComment>(
   {
     task: {
       type: Schema.Types.ObjectId,
-      ref: "Task",
+      ref: 'Task',
       required: true,
     },
     user: {
       type: Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
     },
     content: {
@@ -26,4 +26,4 @@ const commentSchema = new Schema<IComment>(
   { timestamps: true }
 );
 
-export default model<IComment>("Comment", commentSchema);
+export default model<IComment>('Comment', commentSchema);

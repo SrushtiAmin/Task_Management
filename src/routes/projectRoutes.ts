@@ -1,60 +1,52 @@
-import { Router } from "express";
-import { ProjectController } from "../controllers/projectController";
-import authMiddleware from "../middleware/auth";
-import { roleCheck } from "../middleware/rolecheck";
-import { validateRequest } from "../middleware/validateRequest";
+import { Router } from 'express';
+import { ProjectController } from '../controllers/projectController';
+import authMiddleware from '../middleware/auth';
+import { roleCheck } from '../middleware/rolecheck';
+import { validateRequest } from '../middleware/validateRequest';
 import {
   createProjectSchema,
   updateProjectSchema,
-} from "../validators/projectValidator";
+} from '../validators/projectValidator';
 
 const router = Router();
 
 // Create project (PM only)
 router.post(
-  "/",
+  '/',
   authMiddleware,
-  roleCheck(["pm"]),
+  roleCheck(['pm']),
   validateRequest(createProjectSchema),
   ProjectController.createProject
 );
 
 // Get all projects for logged-in user
-router.get(
-  "/",
-  authMiddleware,
-  ProjectController.getProjects
-);
+router.get('/', authMiddleware, ProjectController.getProjects);
 
 // Get project by ID
-router.get(
-  "/:id",
-  authMiddleware,
-  ProjectController.getProjectById
-);
+router.get('/:id', authMiddleware, ProjectController.getProjectById);
 
 // Update project (PM only)
 router.put(
-  "/:id",
+  '/:id',
   authMiddleware,
-  roleCheck(["pm"]),
+  roleCheck(['pm']),
   validateRequest(updateProjectSchema),
   ProjectController.updateProject
 );
 
 // Delete project (PM only)
 router.delete(
-  "/:id",
+  '/:id',
   authMiddleware,
-  roleCheck(["pm"]),
+  roleCheck(['pm']),
   ProjectController.deleteProject
 );
 
 // Add member to project (PM only)
 router.post(
-  "/:id/members",
+  '/:id/members',
   authMiddleware,
-  roleCheck(["pm"]),
+  roleCheck(['pm']),
   ProjectController.addMember
 );
 
