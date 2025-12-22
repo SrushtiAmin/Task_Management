@@ -1,65 +1,151 @@
-import { Response } from 'express';
-import Comment from '../models/Comments';
-import { AuthRequest } from '../middleware/auth';
-import mongoose from 'mongoose';
+import { Response } from "express";
+import mongoose from "mongoose";
+import Comment from "../models/Comments";
+import Task from "../models/Task";
+import Project from "../models/Project";
+import { AuthRequest } from "../middleware/auth";
 
 export class CommentController {
-  // POST /api/tasks/:id/comments
+  // ADD COMMENT
   static async addComment(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        return res.status(401).json({ message: "Unauthorized" });
       }
 
-      if (!req.body.content) {
-        return res.status(400).json({ message: 'Comment content required' });
+      const { content } = req.body;
+      if (!content) {
+        return res.status(400).json({ message: "Comment content required" });
+      }
+
+      const task = await Task.findById(req.params.id);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      const isAssigned =
+        task.assignedTo.toString() === req.user.userId;
+
+      // Member → only own task
+      if (req.user.role !== "pm" && !isAssigned) {
+        return res.status(403).json({
+          message: "You can comment only on your assigned task",
+        });
+      }
+
+      // PM → must be part of project
+      if (req.user.role === "pm") {
+        const project = await Project.findById(task.project);
+        if (
+          !project ||
+          !project.members.some(
+            (m) => m.toString() === req.user!.userId
+          )
+        ) {
+          return res.status(403).json({ message: "Access denied" });
+        }
       }
 
       const comment = await Comment.create({
-        task: new mongoose.Types.ObjectId(req.params.id),
+        task: task._id,
         user: new mongoose.Types.ObjectId(req.user.userId),
-        content: req.body.content,
+        content,
       });
 
-      res.status(201).json(comment);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to add comment' });
+      return res.status(201).json(comment);
+    } catch {
+      return res.status(500).json({ message: "Failed to add comment" });
     }
   }
 
-  // GET /api/tasks/:id/comments
+  // GET COMMENTS
   static async getComments(req: AuthRequest, res: Response) {
     try {
-      const comments = await Comment.find({
-        task: req.params.id,
-      }).populate('user', 'name email');
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
 
-      res.json(comments);
+      const task = await Task.findById(req.params.id);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      const isAssigned =
+        task.assignedTo.toString() === req.user.userId;
+
+      if (req.user.role !== "pm" && !isAssigned) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (req.user.role === "pm") {
+        const project = await Project.findById(task.project);
+        if (
+          !project ||
+          !project.members.some(
+            (m) => m.toString() === req.user!.userId
+          )
+        ) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      const comments = await Comment.find({ task: task._id })
+        .populate("user", "name email role")
+        .sort({ createdAt: -1 });
+
+      return res.status(200).json(comments);
     } catch {
-      res.status(500).json({ message: 'Failed to fetch comments' });
+      return res.status(500).json({ message: "Failed to fetch comments" });
     }
   }
 
-  // DELETE /api/comments/:id
+  // DELETE COMMENT
   static async deleteComment(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
+        return res.status(401).json({ message: "Unauthorized" });
       }
 
       const comment = await Comment.findById(req.params.id);
       if (!comment) {
-        return res.status(404).json({ message: 'Comment not found' });
+        return res.status(404).json({ message: "Comment not found" });
       }
 
-      if (comment.user.toString() !== req.user.userId) {
-        return res.status(403).json({ message: 'Forbidden' });
+      const task = await Task.findById(comment.task);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      const isAssigned =
+        task.assignedTo.toString() === req.user.userId;
+
+      // Member → own comment + own task
+      if (req.user.role !== "pm") {
+        if (
+          comment.user.toString() !== req.user.userId ||
+          !isAssigned
+        ) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+
+      // PM → project member
+      if (req.user.role === "pm") {
+        const project = await Project.findById(task.project);
+        if (
+          !project ||
+          !project.members.some(
+            (m) => m.toString() === req.user!.userId
+          )
+        ) {
+          return res.status(403).json({ message: "Access denied" });
+        }
       }
 
       await comment.deleteOne();
-      res.json({ message: 'Comment deleted' });
+      return res.status(204).send();
     } catch {
-      res.status(500).json({ message: 'Delete failed' });
+      return res.status(500).json({ message: "Delete failed" });
     }
   }
 }

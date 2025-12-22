@@ -1,16 +1,16 @@
-import { Response } from 'express';
-import { Types } from 'mongoose';
-import { AuthRequest } from '../middleware/auth';
-import Project from '../models/Project';
-import Task from '../models/Task';
+import { Response } from "express";
+import { Types } from "mongoose";
+import { AuthRequest } from "../middleware/auth";
+import Project from "../models/Project";
+import Task from "../models/Task";
 
 export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({
         statusCode: 401,
-        error: 'Unauthorized',
-        message: 'Authentication required',
+        error: "Unauthorized",
+        message: "Authentication required",
       });
     }
 
@@ -18,7 +18,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
     const today = new Date();
 
     // ===================== PM DASHBOARD =====================
-    if (role === 'pm') {
+    if (role === "pm") {
       const projects = await Project.find({
         $or: [
           { createdBy: new Types.ObjectId(userId) },
@@ -33,16 +33,16 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       const projectData = await Promise.all(
         projects.map(async (project) => {
           const tasks = await Task.find({ project: project._id }).populate(
-            'assignedTo',
-            'name email'
+            "assignedTo",
+            "name email"
           );
 
           tasks.forEach((task) => {
-            if (task.status === 'done') {
+            if (task.status === "done") {
               completedTasks++;
             } else {
               pendingTasks++;
-              if (task.dueDate && task.dueDate < today) {
+              if (task.dueDate && new Date(task.dueDate) < today) {
                 overdueTasks++;
               }
             }
@@ -65,7 +65,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       );
 
       return res.status(200).json({
-        role: 'pm',
+        role: "pm",
         stats: {
           completedTasks,
           pendingTasks,
@@ -76,28 +76,27 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
     }
 
     // ===================== MEMBER DASHBOARD =====================
-    const tasks = await Task.find({ assignedTo: userId }).populate(
-      'project',
-      'name status'
-    );
+    const tasks = await Task.find({
+      assignedTo: new Types.ObjectId(userId),
+    }).populate("project", "name status");
 
     let completedTasks = 0;
     let pendingTasks = 0;
     let overdueTasks = 0;
 
     tasks.forEach((task) => {
-      if (task.status === 'done') {
+      if (task.status === "done") {
         completedTasks++;
       } else {
         pendingTasks++;
-        if (task.dueDate && task.dueDate < today) {
+        if (task.dueDate && new Date(task.dueDate) < today) {
           overdueTasks++;
         }
       }
     });
 
     return res.status(200).json({
-      role: 'member',
+      role: "member",
       stats: {
         completedTasks,
         pendingTasks,
@@ -123,7 +122,7 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     return res.status(500).json({
       statusCode: 500,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: error.message,
     });
   }
