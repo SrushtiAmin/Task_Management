@@ -7,119 +7,158 @@
 
 /**
  * @swagger
- * /api/tasks:
+ * /api/projects/{projectId}/tasks:
  *   post:
  *     summary: Create task
- *     description: Creates a new task under a project. Only Project Managers are allowed.
+ *     description: Create a task under a project (PM of project only)
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               assignedTo:
+ *                 type: string
+ *               priority:
+ *                 type: string
+ *               dueDate:
+ *                 type: string
+ *                 format: date
  *     responses:
  *       201:
- *         description: Task created successfully.
- *       400:
- *         description: Bad Request – validation failed.
- *       401:
- *         description: Unauthorized.
+ *         description: Task created
  *       403:
- *         description: Forbidden – PM only.
+ *         description: Forbidden
  */
 
 /**
  * @swagger
- * /api/tasks:
+ * /api/projects/{projectId}/tasks:
  *   get:
- *     summary: Get tasks
- *     description: Returns all tasks for PM or assigned tasks for team members.
+ *     summary: Get tasks of a project
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: Tasks retrieved successfully.
- *       401:
- *         description: Unauthorized.
+ *         description: List of tasks
  */
 
 /**
  * @swagger
- * /api/tasks/{id}:
+ * /api/tasks/{taskId}:
  *   get:
  *     summary: Get task by ID
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: Task details retrieved.
- *       401:
- *         description: Unauthorized.
- *       404:
- *         description: Task not found.
+ *         description: Task found
  */
 
 /**
  * @swagger
- * /api/tasks/{id}:
+ * /api/tasks/{taskId}:
  *   put:
  *     summary: Update task
- *     description: Updates task details.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
  *     responses:
  *       200:
- *         description: Task updated successfully.
- *       400:
- *         description: Bad Request – validation failed.
- *       403:
- *         description: Forbidden.
+ *         description: Task updated
  */
 
 /**
  * @swagger
- * /api/tasks/{id}:
+ * /api/tasks/{taskId}:
  *   delete:
  *     summary: Delete task
- *     description: Deletes a task. Only Project Managers are allowed.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: taskId
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
- *       200:
- *         description: Task deleted successfully.
- *       403:
- *         description: Forbidden – PM only.
+ *       204:
+ *         description: Task deleted
  */
-
-/**
- * @swagger
- * /api/tasks/{id}/status:
- *   patch:
- *     summary: Update task status
- *     description: Updates task workflow status. Members follow sequence, PM can override.
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Task status updated successfully.
- *       400:
- *         description: Invalid status transition.
- */
-
 /**
  * @swagger
  * /api/tasks/{id}/upload:
  *   post:
- *     summary: Upload attachment
- *     description: Uploads an image or PDF attachment to a task.
+ *     summary: Upload attachment to task
+ *     description: Upload an image or PDF to a task (PM or assigned member only)
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       200:
- *         description: File uploaded successfully.
+ *         description: File uploaded successfully
  *       400:
- *         description: Invalid file or upload error.
+ *         description: No file uploaded or invalid file
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Not allowed to upload file
+ *       404:
+ *         description: Task not found
  */

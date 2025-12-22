@@ -7,9 +7,8 @@ import { AuthRequest } from "../middleware/auth";
 
 export class ProjectController {
   /**
-   *  CREATE PROJECT
-   * PM only
-   * Project name must be unique
+   * CREATE PROJECT
+   * Only PM can create
    */
   static async createProject(req: AuthRequest, res: Response) {
     try {
@@ -27,7 +26,6 @@ export class ProjectController {
         });
       }
 
-      // Prevent duplicate project names
       const existingProject = await Project.findOne({ name });
       if (existingProject) {
         return res.status(409).json({
@@ -42,10 +40,11 @@ export class ProjectController {
         endDate,
         createdBy: new mongoose.Types.ObjectId(req.user.userId),
         members: [new mongoose.Types.ObjectId(req.user.userId)],
+        status: "active",
       });
 
       return res.status(201).json(project);
-    } catch (error) {
+    } catch {
       return res.status(500).json({
         message: "Failed to create project",
       });
@@ -53,8 +52,8 @@ export class ProjectController {
   }
 
   /**
-   *  GET ALL PROJECTS
-   * PM & Member → only projects they are part of
+   * GET ALL PROJECTS
+   * Only projects where user is member or owner
    */
   static async getProjects(req: AuthRequest, res: Response) {
     try {
@@ -74,14 +73,15 @@ export class ProjectController {
 
   /**
    * GET PROJECT BY ID
-   * Only accessible if user is part of the project
+   * Accessible if user is PM or member
    */
   static async getProjectById(req: AuthRequest, res: Response) {
     try {
-      const project = await Project.findById(req.params.id).populate(
-        "members",
-        "name email"
-      );
+      const userId = req.user!.userId;
+
+      const project = await Project.findById(req.params.id)
+        .populate("members", "name email")
+        .populate("createdBy", "name email");
 
       if (!project) {
         return res.status(404).json({
@@ -89,11 +89,11 @@ export class ProjectController {
         });
       }
 
-      const isMember = project.members.some(
-        (m) => m.toString() === req.user!.userId
-      );
+      const isAllowed =
+        project.createdBy.toString() === userId ||
+        project.members.some((m) => m._id.toString() === userId);
 
-      if (!isMember) {
+      if (!isAllowed) {
         return res.status(403).json({
           message: "You do not have access to this project",
         });
@@ -108,16 +108,13 @@ export class ProjectController {
   }
 
   /**
-   *  UPDATE PROJECT
-   * PM only & PM must be part of project
+   * UPDATE PROJECT
+   * Only PM of THIS project
+   * Archived project cannot be updated
    */
   static async updateProject(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.role !== "pm") {
-        return res.status(403).json({
-          message: "Only Project Managers can update projects",
-        });
-      }
+      const userId = req.user!.userId;
 
       const project = await Project.findById(req.params.id);
       if (!project) {
@@ -126,13 +123,15 @@ export class ProjectController {
         });
       }
 
-      const isMember = project.members.some(
-        (m) => m.toString() === req.user!.userId
-      );
-
-      if (!isMember) {
+      if (project.createdBy.toString() !== userId) {
         return res.status(403).json({
-          message: "You are not allowed to update this project",
+          message: "Only the project owner can update this project",
+        });
+      }
+
+      if (project.status === "archived") {
+        return res.status(400).json({
+          message: "Archived projects cannot be updated",
         });
       }
 
@@ -148,18 +147,14 @@ export class ProjectController {
   }
 
   /**
-   *  DELETE PROJECT
-   * PM only
-   * PM must be part of project
-   * Cannot delete if active tasks exist
+   * DELETE PROJECT
+   * Only PM of THIS project
+   * Only if status is archived
+   * No active tasks allowed
    */
   static async deleteProject(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.role !== "pm") {
-        return res.status(403).json({
-          message: "Only Project Managers can delete projects",
-        });
-      }
+      const userId = req.user!.userId;
 
       const project = await Project.findById(req.params.id);
       if (!project) {
@@ -168,17 +163,18 @@ export class ProjectController {
         });
       }
 
-      const isMember = project.members.some(
-        (m) => m.toString() === req.user!.userId
-      );
-
-      if (!isMember) {
+      if (project.createdBy.toString() !== userId) {
         return res.status(403).json({
-          message: "You are not allowed to delete this project",
+          message: "Only the project owner can delete this project",
         });
       }
 
-      //  Block deletion if active tasks exist
+      if (project.status !== "archived") {
+        return res.status(400).json({
+          message: "Only archived projects can be deleted",
+        });
+      }
+
       const hasActiveTasks = await Task.exists({
         project: project._id,
         status: { $ne: "done" },
@@ -186,8 +182,7 @@ export class ProjectController {
 
       if (hasActiveTasks) {
         return res.status(400).json({
-          message:
-            "Project cannot be deleted because it has active (incomplete) tasks",
+          message: "Project has active tasks and cannot be deleted",
         });
       }
 
@@ -201,32 +196,32 @@ export class ProjectController {
   }
 
   /**
-   *  ADD MEMBER
-   * PM only
-   * User must exist
-   * User must not already be in project
+   * ADD MEMBER
+   * Only PM of THIS project
    */
   static async addMember(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.role !== "pm") {
-        return res.status(403).json({
-          message: "Only Project Managers can add members",
-        });
-      }
-
+      const userId = req.user!.userId;
       const { memberId } = req.body;
-
-      const userExists = await User.findById(memberId);
-      if (!userExists) {
-        return res.status(404).json({
-          message: "User does not exist",
-        });
-      }
 
       const project = await Project.findById(req.params.id);
       if (!project) {
         return res.status(404).json({
           message: "Project not found",
+        });
+      }
+
+      // AUTH FIRST
+      if (project.createdBy.toString() !== userId) {
+        return res.status(403).json({
+          message: "You are not authorized to manage this project",
+        });
+      }
+
+      const userExists = await User.findById(memberId);
+      if (!userExists) {
+        return res.status(404).json({
+          message: "User does not exist",
         });
       }
 
