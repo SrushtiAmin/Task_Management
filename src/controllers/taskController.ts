@@ -7,7 +7,7 @@ import { AuthRequest } from "../middleware/auth";
 const STATUS_FLOW = ["todo", "in_progress", "in_review", "done"];
 
 export class TaskController {
-  // 1️⃣ CREATE TASK (PM only)
+  //  CREATE TASK (PM only)
   static async createTask(req: AuthRequest, res: Response) {
     try {
       if (req.user?.role !== "pm") {
@@ -48,7 +48,7 @@ export class TaskController {
     }
   }
 
-  // 2️⃣ GET ALL TASKS (PM & Member – only related tasks + filters)
+  //  GET ALL TASKS (PM & Member – only related tasks + filters)
   static async getTasks(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -78,7 +78,7 @@ export class TaskController {
     }
   }
 
-  // 3️⃣ GET TASK BY ID (only assigned user or PM of project)
+  //  GET TASK BY ID (only assigned user or PM of project)
   static async getTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
@@ -99,7 +99,7 @@ export class TaskController {
     }
   }
 
-  // 4️⃣ UPDATE TASK
+  //  UPDATE TASK
   static async updateTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
@@ -132,7 +132,7 @@ export class TaskController {
     }
   }
 
-  // 5️⃣ DELETE TASK (PM only)
+  //  DELETE TASK (PM only)
   static async deleteTask(req: AuthRequest, res: Response) {
     try {
       if (req.user?.role !== "pm") {
@@ -151,7 +151,7 @@ export class TaskController {
     }
   }
 
-  // 6️⃣ UPDATE STATUS (workflow enforced)
+  //  UPDATE STATUS (workflow enforced)
   static async updateStatus(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
@@ -183,7 +183,7 @@ export class TaskController {
     }
   }
 
-  // 7️⃣ FILE UPLOAD (PM or assigned user, max 5 files)
+  //  FILE UPLOAD (PM or assigned user, max 5 files)
   static async uploadFile(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {

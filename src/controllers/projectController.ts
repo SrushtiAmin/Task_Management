@@ -7,7 +7,7 @@ import { AuthRequest } from "../middleware/auth";
 
 export class ProjectController {
   /**
-   * 1️⃣ CREATE PROJECT
+   *  CREATE PROJECT
    * PM only
    * Project name must be unique
    */
@@ -53,7 +53,7 @@ export class ProjectController {
   }
 
   /**
-   * 2️⃣ GET ALL PROJECTS
+   *  GET ALL PROJECTS
    * PM & Member → only projects they are part of
    */
   static async getProjects(req: AuthRequest, res: Response) {
@@ -73,7 +73,7 @@ export class ProjectController {
   }
 
   /**
-   * 3️⃣ GET PROJECT BY ID
+   * GET PROJECT BY ID
    * Only accessible if user is part of the project
    */
   static async getProjectById(req: AuthRequest, res: Response) {
@@ -108,7 +108,7 @@ export class ProjectController {
   }
 
   /**
-   * 4️⃣ UPDATE PROJECT
+   *  UPDATE PROJECT
    * PM only & PM must be part of project
    */
   static async updateProject(req: AuthRequest, res: Response) {
@@ -148,10 +148,10 @@ export class ProjectController {
   }
 
   /**
-   * 5️⃣ DELETE PROJECT
+   *  DELETE PROJECT
    * PM only
    * PM must be part of project
-   * ❌ Cannot delete if active tasks exist
+   * Cannot delete if active tasks exist
    */
   static async deleteProject(req: AuthRequest, res: Response) {
     try {
@@ -178,7 +178,7 @@ export class ProjectController {
         });
       }
 
-      // 🔒 Block deletion if active tasks exist
+      //  Block deletion if active tasks exist
       const hasActiveTasks = await Task.exists({
         project: project._id,
         status: { $ne: "done" },
@@ -201,7 +201,7 @@ export class ProjectController {
   }
 
   /**
-   * 6️⃣ ADD MEMBER
+   *  ADD MEMBER
    * PM only
    * User must exist
    * User must not already be in project
