@@ -4,8 +4,6 @@ import Task from "../models/Task";
 import Project from "../models/Project";
 import { AuthRequest } from "../middleware/auth";
 
-const STATUS_FLOW = ["todo", "in_progress", "in_review", "done"];
-
 export class TaskController {
 
   // CREATE TASK (PM of project only)
@@ -21,7 +19,6 @@ export class TaskController {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      // PM must belong to project
       if (
         req.user?.role !== "pm" ||
         !project.members.some(m => m.toString() === userId)
@@ -29,7 +26,6 @@ export class TaskController {
         return res.status(403).json({ message: "Only project PM can create tasks" });
       }
 
-      // Assigned user must be project member
       if (!project.members.some(m => m.toString() === assignedTo)) {
         return res.status(400).json({ message: "Assigned user not in project" });
       }
@@ -116,7 +112,6 @@ export class TaskController {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      // Member can update only status
       if (!isProjectPM && Object.keys(req.body).some(k => k !== "status")) {
         return res.status(403).json({
           message: "Members can only update task status",
@@ -154,15 +149,11 @@ export class TaskController {
     }
   }
 
-  // UPDATE STATUS (workflow enforced)
+  // UPDATE STATUS (NO FLOW RESTRICTION)
   static async updateStatus(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
       if (!task) return res.status(404).json({ message: "Task not found" });
-
-      const newStatus = req.body.status;
-      const currIndex = STATUS_FLOW.indexOf(task.status);
-      const newIndex = STATUS_FLOW.indexOf(newStatus);
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -174,11 +165,8 @@ export class TaskController {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      if (!isProjectPM && newIndex !== currIndex + 1) {
-        return res.status(400).json({ message: "Invalid status flow" });
-      }
-
-      task.status = newStatus;
+      // Flexible status update (any direction)
+      task.status = req.body.status;
       await task.save();
 
       return res.status(200).json(task);
