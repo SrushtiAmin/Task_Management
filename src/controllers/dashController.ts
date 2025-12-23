@@ -104,7 +104,6 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       },
       tasks: tasks.map((task) => {
         const project = task.project as any;
-
         return {
           taskId: task._id,
           title: task.title,

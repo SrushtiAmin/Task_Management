@@ -10,7 +10,7 @@
  * /api/dashboard:
  *   get:
  *     summary: Get dashboard data
- *     description: >
+ *     description: |
  *       Returns dashboard statistics and overview data.
  *       PMs receive project-wise task breakdown.
  *       Members receive assigned task overview.
@@ -19,9 +19,9 @@
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Dashboard data retrieved successfully.
+ *         description: Dashboard data retrieved successfully
  *       401:
- *         description: Unauthorized – authentication required.
+ *         description: Unauthorized – authentication required
  *       500:
- *         description: Internal Server Error.
+ *         description: Internal Server Error
  */

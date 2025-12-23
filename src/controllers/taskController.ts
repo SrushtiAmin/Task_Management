@@ -7,37 +7,38 @@ import { AuthRequest } from "../middleware/auth";
 const STATUS_FLOW = ["todo", "in_progress", "in_review", "done"];
 
 export class TaskController {
-  //  CREATE TASK (PM only)
+
+  // CREATE TASK (PM of project only)
   static async createTask(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.role !== "pm") {
-        return res.status(403).json({ message: "Only PM can create tasks" });
-      }
+      const userId = req.user!.userId;
+      const projectId = req.params.projectId;
 
-      const { title, project, assignedTo, priority, dueDate } = req.body;
+      const { title, assignedTo, priority, dueDate } = req.body;
 
-      const proj = await Project.findById(project);
-      if (!proj) {
+      const project = await Project.findById(projectId);
+      if (!project) {
         return res.status(404).json({ message: "Project not found" });
       }
 
-      // PM must be part of project
-      if (!proj.members.some((m) => m.toString() === req.user!.userId)) {
-        return res.status(403).json({ message: "Access denied" });
+      // PM must belong to project
+      if (
+        req.user?.role !== "pm" ||
+        !project.members.some(m => m.toString() === userId)
+      ) {
+        return res.status(403).json({ message: "Only project PM can create tasks" });
       }
 
       // Assigned user must be project member
-      if (!proj.members.some((m) => m.toString() === assignedTo)) {
-        return res
-          .status(400)
-          .json({ message: "Assigned user not in project" });
+      if (!project.members.some(m => m.toString() === assignedTo)) {
+        return res.status(400).json({ message: "Assigned user not in project" });
       }
 
       const task = await Task.create({
         title,
-        project,
+        project: projectId,
         assignedTo,
-        createdBy: req.user!.userId,
+        createdBy: userId,
         priority,
         dueDate,
       });
@@ -48,28 +49,25 @@ export class TaskController {
     }
   }
 
-  //  GET ALL TASKS (PM & Member – only related tasks + filters)
+  // GET TASKS OF A PROJECT
   static async getTasks(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
-      const filter: any = {};
+      const projectId = req.params.projectId;
 
-      // Role-based access
-      if (req.user?.role === "pm") {
-        filter.$or = [
-          { createdBy: new Types.ObjectId(userId) },
-          { assignedTo: new Types.ObjectId(userId) },
-        ];
-      } else {
+      const project = await Project.findById(projectId);
+      if (!project || !project.members.some(m => m.toString() === userId)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const filter: any = { project: projectId };
+
+      if (req.user?.role !== "pm") {
         filter.assignedTo = new Types.ObjectId(userId);
       }
 
-      // Optional filters
       if (req.query.status) filter.status = req.query.status;
       if (req.query.priority) filter.priority = req.query.priority;
-      if (req.query.project) filter.project = req.query.project;
-      if (req.query.assignedTo)
-        filter.assignedTo = req.query.assignedTo;
 
       const tasks = await Task.find(filter);
       return res.status(200).json(tasks);
@@ -78,7 +76,7 @@ export class TaskController {
     }
   }
 
-  //  GET TASK BY ID (only assigned user or PM of project)
+  // GET TASK BY ID
   static async getTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
@@ -86,10 +84,13 @@ export class TaskController {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      const isAssigned =
-        task.assignedTo.toString() === req.user!.userId;
+      const project = await Project.findById(task.project);
+      const isAssigned = task.assignedTo.toString() === req.user!.userId;
+      const isProjectPM =
+        req.user?.role === "pm" &&
+        project?.members.some(m => m.toString() === req.user!.userId);
 
-      if (!isAssigned && req.user?.role !== "pm") {
+      if (!isAssigned && !isProjectPM) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -99,28 +100,27 @@ export class TaskController {
     }
   }
 
-  //  UPDATE TASK
+  // UPDATE TASK
   static async updateTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
-      const isAssigned =
-        task.assignedTo.toString() === req.user!.userId;
+      const project = await Project.findById(task.project);
+      const isAssigned = task.assignedTo.toString() === req.user!.userId;
+      const isProjectPM =
+        req.user?.role === "pm" &&
+        project?.members.some(m => m.toString() === req.user!.userId);
 
-      if (!isAssigned && req.user?.role !== "pm") {
+      if (!isAssigned && !isProjectPM) {
         return res.status(403).json({ message: "Access denied" });
       }
 
       // Member can update only status
-      if (req.user?.role !== "pm") {
-        if (Object.keys(req.body).some((f) => f !== "status")) {
-          return res.status(403).json({
-            message: "Members can only update task status",
-          });
-        }
+      if (!isProjectPM && Object.keys(req.body).some(k => k !== "status")) {
+        return res.status(403).json({
+          message: "Members can only update task status",
+        });
       }
 
       Object.assign(task, req.body);
@@ -132,16 +132,19 @@ export class TaskController {
     }
   }
 
-  //  DELETE TASK (PM only)
+  // DELETE TASK (PM only)
   static async deleteTask(req: AuthRequest, res: Response) {
     try {
-      if (req.user?.role !== "pm") {
-        return res.status(403).json({ message: "Only PM can delete task" });
-      }
-
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
+      if (!task) return res.status(404).json({ message: "Task not found" });
+
+      const project = await Project.findById(task.project);
+      const isProjectPM =
+        req.user?.role === "pm" &&
+        project?.members.some(m => m.toString() === req.user!.userId);
+
+      if (!isProjectPM) {
+        return res.status(403).json({ message: "Only project PM can delete task" });
       }
 
       await task.deleteOne();
@@ -151,26 +154,27 @@ export class TaskController {
     }
   }
 
-  //  UPDATE STATUS (workflow enforced)
+  // UPDATE STATUS (workflow enforced)
   static async updateStatus(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
       const newStatus = req.body.status;
       const currIndex = STATUS_FLOW.indexOf(task.status);
       const newIndex = STATUS_FLOW.indexOf(newStatus);
 
-      const isAssigned =
-        task.assignedTo.toString() === req.user!.userId;
+      const project = await Project.findById(task.project);
+      const isAssigned = task.assignedTo.toString() === req.user!.userId;
+      const isProjectPM =
+        req.user?.role === "pm" &&
+        project?.members.some(m => m.toString() === req.user!.userId);
 
-      if (!isAssigned && req.user?.role !== "pm") {
-        return res.status(403).json({ message: "Not assigned" });
+      if (!isAssigned && !isProjectPM) {
+        return res.status(403).json({ message: "Access denied" });
       }
 
-      if (req.user?.role !== "pm" && newIndex !== currIndex + 1) {
+      if (!isProjectPM && newIndex !== currIndex + 1) {
         return res.status(400).json({ message: "Invalid status flow" });
       }
 
@@ -183,26 +187,20 @@ export class TaskController {
     }
   }
 
-  //  FILE UPLOAD (PM or assigned user, max 5 files)
+  // FILE UPLOAD (PM or assigned member)
   static async uploadFile(req: AuthRequest, res: Response) {
     try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
-      const isAssigned =
-        task.assignedTo.toString() === req.user.userId;
-      const isPM = req.user.role === "pm";
+      const project = await Project.findById(task.project);
+      const isAssigned = task.assignedTo.toString() === req.user!.userId;
+      const isProjectPM =
+        req.user?.role === "pm" &&
+        project?.members.some(m => m.toString() === req.user!.userId);
 
-      if (!isAssigned && !isPM) {
-        return res.status(403).json({
-          message: "You are not allowed to upload files for this task",
-        });
+      if (!isAssigned && !isProjectPM) {
+        return res.status(403).json({ message: "Not allowed" });
       }
 
       if (!req.file) {
@@ -210,15 +208,13 @@ export class TaskController {
       }
 
       if (task.attachments.length >= 5) {
-        return res.status(400).json({
-          message: "Maximum 5 attachments allowed per task",
-        });
+        return res.status(400).json({ message: "Max 5 attachments allowed" });
       }
 
       task.attachments.push({
         filename: req.file.filename,
         path: req.file.path,
-        uploadedBy: new Types.ObjectId(req.user.userId),
+        uploadedBy: new Types.ObjectId(req.user!.userId),
         uploadedAt: new Date(),
       });
 

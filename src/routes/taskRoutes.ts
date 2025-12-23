@@ -1,54 +1,58 @@
-import { Router } from 'express';
-import auth from '../middleware/auth';
-import { roleCheck } from '../middleware/rolecheck';
-import { validateRequest } from '../middleware/validateRequest';
-import { TaskController } from '../controllers/taskController';
+import { Router } from "express";
+import auth from "../middleware/auth";
+import { roleCheck } from "../middleware/rolecheck";
+import { validateRequest } from "../middleware/validateRequest";
+import { TaskController } from "../controllers/taskController";
 import {
   createTaskSchema,
   updateTaskSchema,
   updateStatusSchema,
-} from '../validators/taskValidator';
-import { uploadTaskAttachment } from '../middleware/uploadMiddleware';
+} from "../validators/taskValidator";
+import { uploadTaskAttachment } from "../middleware/uploadMiddleware";
 
 const router = Router();
 
-// Create task (PM only)
+// Project scoped routes
 router.post(
-  '/',
+  "/projects/:projectId/tasks",
   auth,
-  roleCheck(['pm']),
+  roleCheck(["pm"]),
   validateRequest(createTaskSchema),
   TaskController.createTask
 );
 
-// Get tasks (PM: all, Member: assigned)
-router.get('/', auth, TaskController.getTasks);
+router.get(
+  "/projects/:projectId/tasks",
+  auth,
+  TaskController.getTasks
+);
 
-// Get task by ID
-router.get('/:id', auth, TaskController.getTask);
+// Task specific routes
+router.get("/tasks/:id", auth, TaskController.getTask);
 
-// Update task details
 router.put(
-  '/:id',
+  "/tasks/:id",
   auth,
   validateRequest(updateTaskSchema),
   TaskController.updateTask
 );
 
-// Delete task (PM only)
-router.delete('/:id', auth, roleCheck(['pm']), TaskController.deleteTask);
+router.delete(
+  "/tasks/:id",
+  auth,
+  roleCheck(["pm"]),
+  TaskController.deleteTask
+);
 
-// Update task status
 router.patch(
-  '/:id/status',
+  "/tasks/:id/status",
   auth,
   validateRequest(updateStatusSchema),
   TaskController.updateStatus
 );
 
-// Upload attachment to task
 router.post(
-  '/:id/upload',
+  "/tasks/:id/upload",
   auth,
   uploadTaskAttachment,
   TaskController.uploadFile
