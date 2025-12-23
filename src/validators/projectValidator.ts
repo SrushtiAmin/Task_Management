@@ -43,8 +43,10 @@ export const createProjectSchema = z
   })
   .refine(
     (data) => {
-      if (!data.startDate || !data.endDate) return true;
-      return new Date(data.endDate) > new Date(data.startDate);
+      if (data.startDate && data.endDate) {
+        return new Date(data.endDate) > new Date(data.startDate);
+      }
+      return true;
     },
     {
       message: 'End date must be after start date',
@@ -95,8 +97,10 @@ export const updateProjectSchema = z
   })
   .refine(
     (data) => {
-      if (!data.startDate || !data.endDate) return true;
-      return new Date(data.endDate) > new Date(data.startDate);
+      if (data.startDate && data.endDate) {
+        return new Date(data.endDate) > new Date(data.startDate);
+      }
+      return true;
     },
     {
       message: 'End date must be after start date',
