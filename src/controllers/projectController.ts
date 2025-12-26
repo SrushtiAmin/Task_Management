@@ -117,7 +117,7 @@ export class ProjectController {
 
       Object.assign(project, req.body);
 
-      // ✅ STATUS HISTORY LOG (only if status changes)
+      //  STATUS HISTORY LOG (only if status changes)
       if (req.body.status && req.body.status !== oldStatus) {
         project.statusHistory.push({
           oldStatus,
