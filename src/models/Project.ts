@@ -8,6 +8,14 @@ export interface IProject extends Document {
   status: 'active' | 'completed' | 'archived';
   startDate?: Date;
   endDate?: Date;
+
+  //  ADDED
+  statusHistory: {
+    oldStatus: string;
+    newStatus: string;
+    changedBy: Types.ObjectId;
+    changedAt: Date;
+  }[];
 }
 
 const projectSchema = new Schema<IProject>(
@@ -43,6 +51,23 @@ const projectSchema = new Schema<IProject>(
 
     startDate: Date,
     endDate: Date,
+
+    // ADDED
+    statusHistory: [
+      {
+        oldStatus: { type: String, required: true },
+        newStatus: { type: String, required: true },
+        changedBy: {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        changedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

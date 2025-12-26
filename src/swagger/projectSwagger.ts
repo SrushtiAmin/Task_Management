@@ -24,10 +24,8 @@
  *             properties:
  *               name:
  *                 type: string
- *                 example: Task Management System
  *               description:
  *                 type: string
- *                 example: Backend project for internship
  *               startDate:
  *                 type: string
  *                 format: date
@@ -36,15 +34,13 @@
  *                 format: date
  *     responses:
  *       201:
- *         description: Project created successfully.
+ *         description: Project created successfully
  *       400:
- *         description: Bad Request – validation failed due to invalid input.
- *       401:
- *         description: Unauthorized – user not authenticated.
+ *         description: Invalid input
  *       403:
- *         description: Forbidden – only Project Managers can create projects.
+ *         description: Only PM can create project
  *       500:
- *         description: Internal Server Error – project creation failed.
+ *         description: Server error
  */
 
 /**
@@ -52,17 +48,17 @@
  * /api/projects:
  *   get:
  *     summary: Get all projects
- *     description: Returns all projects the logged-in user is a member of.
+ *     description: Returns projects where the user is a member or owner
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Projects retrieved successfully.
+ *         description: List of projects
  *       401:
- *         description: Unauthorized – user not authenticated.
+ *         description: Unauthorized
  *       500:
- *         description: Internal Server Error.
+ *         description: Server error
  */
 
 /**
@@ -70,7 +66,6 @@
  * /api/projects/{id}:
  *   get:
  *     summary: Get project by ID
- *     description: Returns project details by project ID.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -80,16 +75,13 @@
  *         required: true
  *         schema:
  *           type: string
- *         description: Project ID
  *     responses:
  *       200:
- *         description: Project details retrieved successfully.
- *       401:
- *         description: Unauthorized – user not authenticated.
+ *         description: Project fetched successfully
+ *       403:
+ *         description: Access denied
  *       404:
- *         description: Project not found.
- *       500:
- *         description: Internal Server Error.
+ *         description: Project not found
  */
 
 /**
@@ -97,7 +89,9 @@
  * /api/projects/{id}:
  *   put:
  *     summary: Update project
- *     description: Updates project details. Only Project Managers are allowed.
+ *     description: |
+ *       Updates project fields.
+ *       If status is changed, the change is logged in status history.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -122,17 +116,13 @@
  *                 enum: [active, completed, archived]
  *     responses:
  *       200:
- *         description: Project updated successfully.
+ *         description: Project updated successfully
  *       400:
- *         description: Bad Request – validation failed.
- *       401:
- *         description: Unauthorized.
+ *         description: Invalid update
  *       403:
- *         description: Forbidden – only Project Managers can update projects.
- *       404:
- *         description: Project not found.
+ *         description: Only PM can update
  *       500:
- *         description: Internal Server Error.
+ *         description: Server error
  */
 
 /**
@@ -140,7 +130,7 @@
  * /api/projects/{id}:
  *   delete:
  *     summary: Delete project
- *     description: Deletes a project. Only Project Managers are allowed.
+ *     description: Only archived projects can be deleted by PM
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -148,19 +138,13 @@
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
  *     responses:
- *       200:
- *         description: Project deleted successfully.
- *       401:
- *         description: Unauthorized.
+ *       204:
+ *         description: Project deleted
+ *       400:
+ *         description: Project has active tasks
  *       403:
- *         description: Forbidden – only Project Managers can delete projects.
- *       404:
- *         description: Project not found.
- *       500:
- *         description: Internal Server Error.
+ *         description: Forbidden
  */
 
 /**
@@ -168,7 +152,6 @@
  * /api/projects/{id}/members:
  *   post:
  *     summary: Add member to project
- *     description: Adds a team member to a project. Only Project Managers are allowed.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -176,9 +159,6 @@
  *       - in: path
  *         name: id
  *         required: true
- *         schema:
- *           type: string
- *         description: Project ID
  *     requestBody:
  *       required: true
  *       content:
@@ -189,18 +169,48 @@
  *             properties:
  *               memberId:
  *                 type: string
- *                 example: 64fa123abc456def78901234
  *     responses:
  *       200:
- *         description: Member added successfully.
+ *         description: Member added
  *       400:
- *         description: Bad Request – invalid member ID.
- *       401:
- *         description: Unauthorized.
+ *         description: User already member
  *       403:
- *         description: Forbidden – only Project Managers can add members.
- *       404:
- *         description: Project not found.
+ *         description: Only PM allowed
+ */
+
+/**
+ * @swagger
+ * /api/projects/{projectId}/dashboard:
+ *   get:
+ *     summary: Get project dashboard
+ *     description: |
+ *       PM can view dashboard for entire project,
+ *       filter by memberId or taskId.
+ *       Members can view only their assigned tasks.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: memberId
+ *         schema:
+ *           type: string
+ *         description: PM only
+ *       - in: query
+ *         name: taskId
+ *         schema:
+ *           type: string
+ *         description: PM / member own task
+ *     responses:
+ *       200:
+ *         description: Dashboard data
+ *       403:
+ *         description: Access denied
  *       500:
- *         description: Internal Server Error.
+ *         description: Server error
  */

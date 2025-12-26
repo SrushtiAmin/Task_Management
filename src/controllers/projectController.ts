@@ -6,8 +6,8 @@ import Task from "../models/Task";
 import { AuthRequest } from "../middleware/auth";
 
 export class ProjectController {
-  /* ===================== EXISTING CODE (UNCHANGED) ===================== */
 
+  // ===================== CREATE PROJECT =====================
   static async createProject(req: AuthRequest, res: Response) {
     try {
       if (req.user?.role !== "pm") {
@@ -47,6 +47,7 @@ export class ProjectController {
     }
   }
 
+  // ===================== GET PROJECTS =====================
   static async getProjects(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -61,6 +62,7 @@ export class ProjectController {
     }
   }
 
+  // ===================== GET PROJECT BY ID =====================
   static async getProjectById(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -89,6 +91,7 @@ export class ProjectController {
     }
   }
 
+  // ===================== UPDATE PROJECT (WITH STATUS HISTORY) =====================
   static async updateProject(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -110,15 +113,28 @@ export class ProjectController {
         });
       }
 
-      Object.assign(project, req.body);
-      await project.save();
+      const oldStatus = project.status;
 
+      Object.assign(project, req.body);
+
+      // ✅ STATUS HISTORY LOG (only if status changes)
+      if (req.body.status && req.body.status !== oldStatus) {
+        project.statusHistory.push({
+          oldStatus,
+          newStatus: project.status,
+          changedBy: new mongoose.Types.ObjectId(userId),
+          changedAt: new Date(),
+        });
+      }
+
+      await project.save();
       return res.status(200).json(project);
     } catch {
       return res.status(500).json({ message: "Failed to update project" });
     }
   }
 
+  // ===================== DELETE PROJECT =====================
   static async deleteProject(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -158,6 +174,7 @@ export class ProjectController {
     }
   }
 
+  // ===================== ADD MEMBER =====================
   static async addMember(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -194,8 +211,7 @@ export class ProjectController {
     }
   }
 
-  /* ===================== PROJECT DASHBOARD (ADDED) ===================== */
-
+  // ===================== PROJECT DASHBOARD =====================
   static async getProjectDashboard(req: AuthRequest, res: Response) {
     try {
       const { userId, role } = req.user!;
@@ -220,7 +236,6 @@ export class ProjectController {
           project: new mongoose.Types.ObjectId(projectId),
         };
 
-        // memberId filter (PM only)
         if (memberId) {
           if (!project.members.some((m) => m.toString() === memberId)) {
             return res.status(400).json({
@@ -230,7 +245,6 @@ export class ProjectController {
           filter.assignedTo = new mongoose.Types.ObjectId(memberId as string);
         }
 
-        // taskId filter (PM only)
         if (taskId) {
           filter._id = new mongoose.Types.ObjectId(taskId as string);
         }
@@ -273,7 +287,6 @@ export class ProjectController {
         assignedTo: new mongoose.Types.ObjectId(userId),
       };
 
-      // taskId filter (member – only own task)
       if (taskId) {
         filter._id = new mongoose.Types.ObjectId(taskId as string);
       }

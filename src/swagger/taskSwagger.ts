@@ -63,12 +63,13 @@
  * @swagger
  * /api/projects/{projectId}/tasks:
  *   get:
- *     summary: Get tasks of a project (list or summary)
+ *     summary: Get tasks of a project
  *     description: |
  *       PM gets all tasks of the project.
  *       Members get only tasks assigned to them.
  *
- *       Use `summary=true` to get task counts instead of task list.
+ *       🔹 Use `summary=true` to get task counts grouped by priority
+ *       (aggregation pipeline is used internally).
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -99,7 +100,7 @@
  *
  *       - in: query
  *         name: summary
- *         description: Return task counts instead of task list
+ *         description: Return aggregated task counts instead of task list
  *         schema:
  *           type: boolean
  *
@@ -151,6 +152,8 @@
  *     description: |
  *       PM can update any field.
  *       Members can update only status.
+ *
+ *       🔹 If status is changed, it is logged with timestamp and user.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -208,6 +211,9 @@
  * /api/tasks/{id}/status:
  *   patch:
  *     summary: Update task status
+ *     description: |
+ *       Updates task status.
+ *       🔹 Every status change is recorded in status history.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []

@@ -6,7 +6,7 @@ import { AuthRequest } from "../middleware/auth";
 
 export class TaskController {
 
-  // CREATE TASK (PM of project only)
+  // ===================== CREATE TASK (PM only) =====================
   static async createTask(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -23,11 +23,15 @@ export class TaskController {
         req.user?.role !== "pm" ||
         !project.members.some(m => m.toString() === userId)
       ) {
-        return res.status(403).json({ message: "Only project PM can create tasks" });
+        return res.status(403).json({
+          message: "Only project PM can create tasks",
+        });
       }
 
       if (!project.members.some(m => m.toString() === assignedTo)) {
-        return res.status(400).json({ message: "Assigned user not in project" });
+        return res.status(400).json({
+          message: "Assigned user not in project",
+        });
       }
 
       const task = await Task.create({
@@ -45,7 +49,7 @@ export class TaskController {
     }
   }
 
-  // ✅ UPDATED: GET TASKS (LIST + SUMMARY using aggregation)
+  // ===================== GET TASKS (LIST / SUMMARY) =====================
   static async getTasks(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -71,7 +75,7 @@ export class TaskController {
       if (status) match.status = status;
       if (priority) match.priority = priority;
 
-      // 🔹 SUMMARY MODE (AGGREGATION)
+      // ---------- SUMMARY MODE ----------
       if (summary === "true") {
         const result = await Task.aggregate([
           { $match: match },
@@ -98,7 +102,7 @@ export class TaskController {
         });
       }
 
-      // 🔹 NORMAL LIST MODE
+      // ---------- NORMAL LIST ----------
       const tasks = await Task.find(match);
       return res.status(200).json(tasks);
 
@@ -107,7 +111,7 @@ export class TaskController {
     }
   }
 
-  // GET TASK BY ID
+  // ===================== GET TASK BY ID =====================
   static async getTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
@@ -131,11 +135,13 @@ export class TaskController {
     }
   }
 
-  // UPDATE TASK
+  // ===================== UPDATE TASK =====================
   static async updateTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -162,33 +168,13 @@ export class TaskController {
     }
   }
 
-  // DELETE TASK (PM only)
-  static async deleteTask(req: AuthRequest, res: Response) {
-    try {
-      const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
-
-      const project = await Project.findById(task.project);
-      const isProjectPM =
-        req.user?.role === "pm" &&
-        project?.members.some(m => m.toString() === req.user!.userId);
-
-      if (!isProjectPM) {
-        return res.status(403).json({ message: "Only project PM can delete task" });
-      }
-
-      await task.deleteOne();
-      return res.status(204).send();
-    } catch {
-      return res.status(500).json({ message: "Delete failed" });
-    }
-  }
-
-  // UPDATE STATUS
+  // ===================== UPDATE STATUS (WITH HISTORY) =====================
   static async updateStatus(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -200,20 +186,60 @@ export class TaskController {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      const oldStatus = task.status;
       task.status = req.body.status;
-      await task.save();
 
+      // ✅ STATUS HISTORY LOG
+      if (oldStatus !== task.status) {
+        task.statusHistory.push({
+          oldStatus,
+          newStatus: task.status,
+          changedBy: new Types.ObjectId(req.user!.userId),
+          changedAt: new Date(),
+        });
+      }
+
+      await task.save();
       return res.status(200).json(task);
+
     } catch {
       return res.status(500).json({ message: "Failed to update status" });
     }
   }
 
-  // FILE UPLOAD
+  // ===================== DELETE TASK (PM only) =====================
+  static async deleteTask(req: AuthRequest, res: Response) {
+    try {
+      const task = await Task.findById(req.params.id);
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      const project = await Project.findById(task.project);
+      const isProjectPM =
+        req.user?.role === "pm" &&
+        project?.members.some(m => m.toString() === req.user!.userId);
+
+      if (!isProjectPM) {
+        return res.status(403).json({
+          message: "Only project PM can delete task",
+        });
+      }
+
+      await task.deleteOne();
+      return res.status(204).send();
+    } catch {
+      return res.status(500).json({ message: "Delete failed" });
+    }
+  }
+
+  // ===================== FILE UPLOAD =====================
   static async uploadFile(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -230,7 +256,9 @@ export class TaskController {
       }
 
       if (task.attachments.length >= 5) {
-        return res.status(400).json({ message: "Max 5 attachments allowed" });
+        return res.status(400).json({
+          message: "Max 5 attachments allowed",
+        });
       }
 
       task.attachments.push({
