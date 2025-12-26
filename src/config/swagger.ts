@@ -20,7 +20,6 @@ const swaggerOptions: swaggerJSDoc.Options = {
       { name: 'Projects', description: 'Project management APIs' },
       { name: 'Tasks', description: 'Task management APIs' },
       { name: 'Comments', description: 'Task comments APIs' },
-      { name: 'Dashboard', description: 'Dashboard APIs' },
     ],
 
     components: {
