@@ -12,7 +12,9 @@ import { uploadTaskAttachment } from "../middleware/uploadMiddleware";
 
 const router = Router();
 
-// Project scoped routes
+// ================= PROJECT SCOPED TASK ROUTES =================
+
+// Create task (PM only)
 router.post(
   "/projects/:projectId/tasks",
   auth,
@@ -21,15 +23,19 @@ router.post(
   TaskController.createTask
 );
 
+// ✅ Get tasks / filters / summary (PM & Members)
 router.get(
   "/projects/:projectId/tasks",
   auth,
   TaskController.getTasks
 );
 
-// Task specific routes
+// ================= TASK SPECIFIC ROUTES =================
+
+// Get task by ID
 router.get("/tasks/:id", auth, TaskController.getTask);
 
+// Update task
 router.put(
   "/tasks/:id",
   auth,
@@ -37,6 +43,7 @@ router.put(
   TaskController.updateTask
 );
 
+// Delete task (PM only)
 router.delete(
   "/tasks/:id",
   auth,
@@ -44,6 +51,7 @@ router.delete(
   TaskController.deleteTask
 );
 
+// Update status
 router.patch(
   "/tasks/:id/status",
   auth,
@@ -51,6 +59,7 @@ router.patch(
   TaskController.updateStatus
 );
 
+// Upload attachment
 router.post(
   "/tasks/:id/upload",
   auth,

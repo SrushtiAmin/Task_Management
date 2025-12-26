@@ -50,4 +50,11 @@ router.post(
   ProjectController.addMember
 );
 
+//PROJECT DASHBOARD (NEW – CORRECT PLACE)
+router.get(
+  '/:projectId/dashboard',
+  authMiddleware,
+  ProjectController.getProjectDashboard
+);
+
 export default router;

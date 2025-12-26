@@ -45,28 +45,63 @@ export class TaskController {
     }
   }
 
-  // GET TASKS OF A PROJECT
+  // ✅ UPDATED: GET TASKS (LIST + SUMMARY using aggregation)
   static async getTasks(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
       const projectId = req.params.projectId;
+      const { status, priority, assignedTo, summary } = req.query;
 
       const project = await Project.findById(projectId);
       if (!project || !project.members.some(m => m.toString() === userId)) {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const filter: any = { project: projectId };
+      const match: any = {
+        project: new Types.ObjectId(projectId),
+      };
 
+      // Role-based filtering
       if (req.user?.role !== "pm") {
-        filter.assignedTo = new Types.ObjectId(userId);
+        match.assignedTo = new Types.ObjectId(userId);
+      } else if (assignedTo) {
+        match.assignedTo = new Types.ObjectId(assignedTo as string);
       }
 
-      if (req.query.status) filter.status = req.query.status;
-      if (req.query.priority) filter.priority = req.query.priority;
+      if (status) match.status = status;
+      if (priority) match.priority = priority;
 
-      const tasks = await Task.find(filter);
+      // 🔹 SUMMARY MODE (AGGREGATION)
+      if (summary === "true") {
+        const result = await Task.aggregate([
+          { $match: match },
+          {
+            $group: {
+              _id: "$priority",
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              priority: "$_id",
+              count: 1,
+            },
+          },
+        ]);
+
+        const totalTasks = result.reduce((sum, r) => sum + r.count, 0);
+
+        return res.status(200).json({
+          totalTasks,
+          byPriority: result,
+        });
+      }
+
+      // 🔹 NORMAL LIST MODE
+      const tasks = await Task.find(match);
       return res.status(200).json(tasks);
+
     } catch {
       return res.status(500).json({ message: "Failed to fetch tasks" });
     }
@@ -149,7 +184,7 @@ export class TaskController {
     }
   }
 
-  // UPDATE STATUS (NO FLOW RESTRICTION)
+  // UPDATE STATUS
   static async updateStatus(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
@@ -165,7 +200,6 @@ export class TaskController {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      // Flexible status update (any direction)
       task.status = req.body.status;
       await task.save();
 
@@ -175,7 +209,7 @@ export class TaskController {
     }
   }
 
-  // FILE UPLOAD (PM or assigned member)
+  // FILE UPLOAD
   static async uploadFile(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
