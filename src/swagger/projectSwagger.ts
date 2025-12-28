@@ -91,7 +91,8 @@
  *     summary: Update project
  *     description: |
  *       Updates project fields.
- *       If status is changed, the change is logged in status history.
+ *       🔹 If project status is changed, the change is recorded in the activity log
+ *       with timestamp and user.
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -184,8 +185,7 @@
  *   get:
  *     summary: Get project dashboard
  *     description: |
- *       PM can view dashboard for entire project,
- *       filter by memberId or taskId.
+ *       PM can view dashboard for entire project and filter by memberId or taskId.
  *       Members can view only their assigned tasks.
  *     tags: [Projects]
  *     security:
@@ -198,14 +198,14 @@
  *           type: string
  *       - in: query
  *         name: memberId
+ *         description: PM only
  *         schema:
  *           type: string
- *         description: PM only
  *       - in: query
  *         name: taskId
+ *         description: PM or member (own task)
  *         schema:
  *           type: string
- *         description: PM / member own task
  *     responses:
  *       200:
  *         description: Dashboard data

@@ -2,16 +2,16 @@ import { Response } from "express";
 import { Types } from "mongoose";
 import Task from "../models/Task";
 import Project from "../models/Project";
+import ActivityLog from "../models/ActivityLog";
 import { AuthRequest } from "../middleware/auth";
 
 export class TaskController {
 
-  // ===================== CREATE TASK (PM only) =====================
+  // ===================== CREATE TASK =====================
   static async createTask(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
       const projectId = req.params.projectId;
-
       const { title, assignedTo, priority, dueDate } = req.body;
 
       const project = await Project.findById(projectId);
@@ -23,15 +23,11 @@ export class TaskController {
         req.user?.role !== "pm" ||
         !project.members.some(m => m.toString() === userId)
       ) {
-        return res.status(403).json({
-          message: "Only project PM can create tasks",
-        });
+        return res.status(403).json({ message: "Only project PM can create tasks" });
       }
 
       if (!project.members.some(m => m.toString() === assignedTo)) {
-        return res.status(400).json({
-          message: "Assigned user not in project",
-        });
+        return res.status(400).json({ message: "Assigned user not in project" });
       }
 
       const task = await Task.create({
@@ -49,7 +45,7 @@ export class TaskController {
     }
   }
 
-  // ===================== GET TASKS (LIST / SUMMARY) =====================
+  // ===================== GET TASKS =====================
   static async getTasks(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -61,11 +57,8 @@ export class TaskController {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const match: any = {
-        project: new Types.ObjectId(projectId),
-      };
+      const match: any = { project: new Types.ObjectId(projectId) };
 
-      // Role-based filtering
       if (req.user?.role !== "pm") {
         match.assignedTo = new Types.ObjectId(userId);
       } else if (assignedTo) {
@@ -75,37 +68,19 @@ export class TaskController {
       if (status) match.status = status;
       if (priority) match.priority = priority;
 
-      // ---------- SUMMARY MODE ----------
       if (summary === "true") {
         const result = await Task.aggregate([
           { $match: match },
-          {
-            $group: {
-              _id: "$priority",
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              priority: "$_id",
-              count: 1,
-            },
-          },
+          { $group: { _id: "$priority", count: { $sum: 1 } } },
+          { $project: { _id: 0, priority: "$_id", count: 1 } },
         ]);
 
-        const totalTasks = result.reduce((sum, r) => sum + r.count, 0);
-
-        return res.status(200).json({
-          totalTasks,
-          byPriority: result,
-        });
+        const totalTasks = result.reduce((s, r) => s + r.count, 0);
+        return res.status(200).json({ totalTasks, byPriority: result });
       }
 
-      // ---------- NORMAL LIST ----------
       const tasks = await Task.find(match);
       return res.status(200).json(tasks);
-
     } catch {
       return res.status(500).json({ message: "Failed to fetch tasks" });
     }
@@ -115,9 +90,7 @@ export class TaskController {
   static async getTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -139,9 +112,7 @@ export class TaskController {
   static async updateTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -154,9 +125,7 @@ export class TaskController {
       }
 
       if (!isProjectPM && Object.keys(req.body).some(k => k !== "status")) {
-        return res.status(403).json({
-          message: "Members can only update task status",
-        });
+        return res.status(403).json({ message: "Members can only update task status" });
       }
 
       Object.assign(task, req.body);
@@ -168,13 +137,11 @@ export class TaskController {
     }
   }
 
-  // ===================== UPDATE STATUS (WITH HISTORY) =====================
+  // ===================== UPDATE STATUS (LOGGED) =====================
   static async updateStatus(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -187,33 +154,33 @@ export class TaskController {
       }
 
       const oldStatus = task.status;
-      task.status = req.body.status;
+      const newStatus = req.body.status;
 
-      //  STATUS HISTORY LOG
-      if (oldStatus !== task.status) {
-        task.statusHistory.push({
-          oldStatus,
-          newStatus: task.status,
-          changedBy: new Types.ObjectId(req.user!.userId),
-          changedAt: new Date(),
+      task.status = newStatus;
+      await task.save();
+
+      if (oldStatus !== newStatus) {
+        await ActivityLog.create({
+          entityType: "task",
+          entityId: task._id,
+          action: "status_change",
+          oldValue: oldStatus,
+          newValue: newStatus,
+          performedBy: new Types.ObjectId(req.user!.userId),
         });
       }
 
-      await task.save();
       return res.status(200).json(task);
-
     } catch {
       return res.status(500).json({ message: "Failed to update status" });
     }
   }
 
-  // ===================== DELETE TASK (PM only) =====================
+  // ===================== DELETE TASK =====================
   static async deleteTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
       const project = await Project.findById(task.project);
       const isProjectPM =
@@ -221,9 +188,7 @@ export class TaskController {
         project?.members.some(m => m.toString() === req.user!.userId);
 
       if (!isProjectPM) {
-        return res.status(403).json({
-          message: "Only project PM can delete task",
-        });
+        return res.status(403).json({ message: "Only project PM can delete task" });
       }
 
       await task.deleteOne();
@@ -237,9 +202,7 @@ export class TaskController {
   static async uploadFile(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
+      if (!task) return res.status(404).json({ message: "Task not found" });
 
       const project = await Project.findById(task.project);
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
@@ -256,9 +219,7 @@ export class TaskController {
       }
 
       if (task.attachments.length >= 5) {
-        return res.status(400).json({
-          message: "Max 5 attachments allowed",
-        });
+        return res.status(400).json({ message: "Max 5 attachments allowed" });
       }
 
       task.attachments.push({

@@ -15,14 +15,6 @@ export interface ITask extends Document {
     uploadedBy: Types.ObjectId;
     uploadedAt: Date;
   }[];
-
-  // ADDED
-  statusHistory: {
-    oldStatus: string;
-    newStatus: string;
-    changedBy: Types.ObjectId;
-    changedAt: Date;
-  }[];
 }
 
 const taskSchema = new Schema<ITask>(
@@ -71,23 +63,6 @@ const taskSchema = new Schema<ITask>(
         path: String,
         uploadedBy: { type: Schema.Types.ObjectId, ref: 'User' },
         uploadedAt: { type: Date, default: Date.now },
-      },
-    ],
-
-    // ADDED
-    statusHistory: [
-      {
-        oldStatus: { type: String, required: true },
-        newStatus: { type: String, required: true },
-        changedBy: {
-          type: Schema.Types.ObjectId,
-          ref: 'User',
-          required: true,
-        },
-        changedAt: {
-          type: Date,
-          default: Date.now,
-        },
       },
     ],
   },
