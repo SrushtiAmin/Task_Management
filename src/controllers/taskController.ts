@@ -14,7 +14,7 @@ export class TaskController {
       const projectId = req.params.projectId;
       const { title, assignedTo, priority, dueDate } = req.body;
 
-      // ✅ DB-side membership & ownership check
+      //  DB-side membership & ownership check
       const project = await Project.findOne({
         _id: projectId,
         members: userId,
@@ -60,7 +60,7 @@ export class TaskController {
       const projectId = req.params.projectId;
       const { status, priority, assignedTo, summary } = req.query;
 
-      // ✅ DB-side access check
+      //  DB-side access check
       const hasAccess = await Project.exists({
         _id: projectId,
         members: userId,
@@ -128,7 +128,7 @@ export class TaskController {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      // ✅ Single DB-side permission check
+      // Single DB-side permission check
       const hasAccess = await Project.exists({
         _id: task.project,
         members: req.user!.userId,
