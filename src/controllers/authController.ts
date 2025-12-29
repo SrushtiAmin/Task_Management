@@ -2,40 +2,26 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt, { SignOptions } from "jsonwebtoken";
 import User from "../models/User";
-import { AuthRequest } from "../middleware/auth";
 
 export class AuthController {
-
-  // ===================== JWT CONFIG HELPER =====================
-  private static getJwtConfig() {
-    const jwtSecret = process.env.JWT_SECRET;
-    const jwtExpire = process.env.JWT_EXPIRE || "7d";
-
-    if (!jwtSecret) {
-      throw new Error("JWT_SECRET is not defined");
-    }
-
-    return { jwtSecret, jwtExpire };
-  }
-
-  // ===================== REGISTER =====================
   static async register(req: Request, res: Response) {
     try {
-      const { jwtSecret, jwtExpire } = this.getJwtConfig();
+      const jwtSecret = process.env.JWT_SECRET;
+      const jwtExpire = process.env.JWT_EXPIRE || "7d";
+
+      if (!jwtSecret) {
+        throw new Error("JWT_SECRET is not defined");
+      }
 
       const { name, email, password, role } = req.body;
 
       if (!name || !email || !password || !role) {
-        return res.status(400).json({
-          message: "All fields are required",
-        });
+        return res.status(400).json({ message: "All fields are required" });
       }
 
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return res.status(409).json({
-          message: "User already exists",
-        });
+        return res.status(409).json({ message: "User already exists" });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -73,10 +59,14 @@ export class AuthController {
     }
   }
 
-  // ===================== LOGIN =====================
   static async login(req: Request, res: Response) {
     try {
-      const { jwtSecret, jwtExpire } = this.getJwtConfig();
+      const jwtSecret = process.env.JWT_SECRET;
+      const jwtExpire = process.env.JWT_EXPIRE || "7d";
+
+      if (!jwtSecret) {
+        throw new Error("JWT_SECRET is not defined");
+      }
 
       const { email, password } = req.body;
 
@@ -88,16 +78,12 @@ export class AuthController {
 
       const user = await User.findOne({ email });
       if (!user) {
-        return res.status(401).json({
-          message: "Invalid credentials",
-        });
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
-        return res.status(401).json({
-          message: "Invalid credentials",
-        });
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
       const token = jwt.sign(
@@ -126,22 +112,16 @@ export class AuthController {
     }
   }
 
-  // ===================== GET CURRENT USER =====================
-  static async getCurrentUser(req: AuthRequest, res: Response) {
+  static async getCurrentUser(req: Request, res: Response) {
     try {
-      const userId = req.user?.userId;
-
+      const userId = (req as any).user?.userId;
       if (!userId) {
-        return res.status(401).json({
-          message: "Unauthorized",
-        });
+        return res.status(401).json({ message: "Unauthorized" });
       }
 
       const user = await User.findById(userId).select("-password");
       if (!user) {
-        return res.status(404).json({
-          message: "User not found",
-        });
+        return res.status(404).json({ message: "User not found" });
       }
 
       return res.status(200).json(user);
