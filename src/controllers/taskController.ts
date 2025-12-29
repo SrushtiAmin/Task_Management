@@ -14,19 +14,27 @@ export class TaskController {
       const projectId = req.params.projectId;
       const { title, assignedTo, priority, dueDate } = req.body;
 
-      const project = await Project.findById(projectId);
+      // ✅ DB-side membership & ownership check
+      const project = await Project.findOne({
+        _id: projectId,
+        members: userId,
+      });
+
       if (!project) {
-        return res.status(404).json({ message: "Project not found" });
+        return res.status(403).json({ message: "Access denied or project not found" });
       }
 
-      if (
-        req.user?.role !== "pm" ||
-        !project.members.some(m => m.toString() === userId)
-      ) {
+      if (req.user?.role !== "pm") {
         return res.status(403).json({ message: "Only project PM can create tasks" });
       }
 
-      if (!project.members.some(m => m.toString() === assignedTo)) {
+      // ✅ Ensure assigned user belongs to project (DB-side)
+      const memberExists = await Project.exists({
+        _id: projectId,
+        members: assignedTo,
+      });
+
+      if (!memberExists) {
         return res.status(400).json({ message: "Assigned user not in project" });
       }
 
@@ -45,20 +53,28 @@ export class TaskController {
     }
   }
 
-  // ===================== GET TASKS =====================
+  // ===================== GET TASKS (LIST / SUMMARY) =====================
   static async getTasks(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.userId;
       const projectId = req.params.projectId;
       const { status, priority, assignedTo, summary } = req.query;
 
-      const project = await Project.findById(projectId);
-      if (!project || !project.members.some(m => m.toString() === userId)) {
+      // ✅ DB-side access check
+      const hasAccess = await Project.exists({
+        _id: projectId,
+        members: userId,
+      });
+
+      if (!hasAccess) {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const match: any = { project: new Types.ObjectId(projectId) };
+      const match: any = {
+        project: new Types.ObjectId(projectId),
+      };
 
+      // Role-based filtering
       if (req.user?.role !== "pm") {
         match.assignedTo = new Types.ObjectId(userId);
       } else if (assignedTo) {
@@ -68,19 +84,37 @@ export class TaskController {
       if (status) match.status = status;
       if (priority) match.priority = priority;
 
+      // ---------- SUMMARY MODE (AGGREGATION) ----------
       if (summary === "true") {
         const result = await Task.aggregate([
           { $match: match },
-          { $group: { _id: "$priority", count: { $sum: 1 } } },
-          { $project: { _id: 0, priority: "$_id", count: 1 } },
+          {
+            $group: {
+              _id: "$priority",
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              priority: "$_id",
+              count: 1,
+            },
+          },
         ]);
 
-        const totalTasks = result.reduce((s, r) => s + r.count, 0);
-        return res.status(200).json({ totalTasks, byPriority: result });
+        const totalTasks = result.reduce((sum, r) => sum + r.count, 0);
+
+        return res.status(200).json({
+          totalTasks,
+          byPriority: result,
+        });
       }
 
+      // ---------- NORMAL LIST ----------
       const tasks = await Task.find(match);
       return res.status(200).json(tasks);
+
     } catch {
       return res.status(500).json({ message: "Failed to fetch tasks" });
     }
@@ -90,15 +124,17 @@ export class TaskController {
   static async getTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
-      const project = await Project.findById(task.project);
-      const isAssigned = task.assignedTo.toString() === req.user!.userId;
-      const isProjectPM =
-        req.user?.role === "pm" &&
-        project?.members.some(m => m.toString() === req.user!.userId);
+      // ✅ Single DB-side permission check
+      const hasAccess = await Project.exists({
+        _id: task.project,
+        members: req.user!.userId,
+      });
 
-      if (!isAssigned && !isProjectPM) {
+      if (!hasAccess) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -112,20 +148,21 @@ export class TaskController {
   static async updateTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
-      const project = await Project.findById(task.project);
+      const isPM = req.user?.role === "pm";
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
-      const isProjectPM =
-        req.user?.role === "pm" &&
-        project?.members.some(m => m.toString() === req.user!.userId);
 
-      if (!isAssigned && !isProjectPM) {
+      if (!isPM && !isAssigned) {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      if (!isProjectPM && Object.keys(req.body).some(k => k !== "status")) {
-        return res.status(403).json({ message: "Members can only update task status" });
+      if (!isPM && Object.keys(req.body).some(k => k !== "status")) {
+        return res.status(403).json({
+          message: "Members can only update task status",
+        });
       }
 
       Object.assign(task, req.body);
@@ -141,15 +178,14 @@ export class TaskController {
   static async updateStatus(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
-      const project = await Project.findById(task.project);
+      const isPM = req.user?.role === "pm";
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
-      const isProjectPM =
-        req.user?.role === "pm" &&
-        project?.members.some(m => m.toString() === req.user!.userId);
 
-      if (!isAssigned && !isProjectPM) {
+      if (!isPM && !isAssigned) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -180,14 +216,11 @@ export class TaskController {
   static async deleteTask(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
-      const project = await Project.findById(task.project);
-      const isProjectPM =
-        req.user?.role === "pm" &&
-        project?.members.some(m => m.toString() === req.user!.userId);
-
-      if (!isProjectPM) {
+      if (req.user?.role !== "pm") {
         return res.status(403).json({ message: "Only project PM can delete task" });
       }
 
@@ -202,15 +235,14 @@ export class TaskController {
   static async uploadFile(req: AuthRequest, res: Response) {
     try {
       const task = await Task.findById(req.params.id);
-      if (!task) return res.status(404).json({ message: "Task not found" });
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
-      const project = await Project.findById(task.project);
+      const isPM = req.user?.role === "pm";
       const isAssigned = task.assignedTo.toString() === req.user!.userId;
-      const isProjectPM =
-        req.user?.role === "pm" &&
-        project?.members.some(m => m.toString() === req.user!.userId);
 
-      if (!isAssigned && !isProjectPM) {
+      if (!isPM && !isAssigned) {
         return res.status(403).json({ message: "Not allowed" });
       }
 

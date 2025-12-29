@@ -12,15 +12,23 @@ export class ProjectController {
   static async createProject(req: AuthRequest, res: Response) {
     try {
       if (req.user?.role !== "pm") {
-        return res.status(403).json({ message: "Only Project Managers can create projects" });
+        return res.status(403).json({
+          message: "Only Project Managers can create projects",
+        });
       }
 
       const { name, description, startDate, endDate } = req.body;
-      if (!name) return res.status(400).json({ message: "Project name is required" });
+      if (!name) {
+        return res.status(400).json({
+          message: "Project name is required",
+        });
+      }
 
       const existingProject = await Project.findOne({ name });
       if (existingProject) {
-        return res.status(409).json({ message: "Project with this name already exists" });
+        return res.status(409).json({
+          message: "Project with this name already exists",
+        });
       }
 
       const project = await Project.create({
@@ -35,7 +43,9 @@ export class ProjectController {
 
       return res.status(201).json(project);
     } catch {
-      return res.status(500).json({ message: "Failed to create project" });
+      return res.status(500).json({
+        message: "Failed to create project",
+      });
     }
   }
 
@@ -50,7 +60,9 @@ export class ProjectController {
 
       return res.status(200).json(projects);
     } catch {
-      return res.status(500).json({ message: "Failed to fetch projects" });
+      return res.status(500).json({
+        message: "Failed to fetch projects",
+      });
     }
   }
 
@@ -63,19 +75,27 @@ export class ProjectController {
         .populate("members", "name email")
         .populate("createdBy", "name email");
 
-      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (!project) {
+        return res.status(404).json({
+          message: "Project not found",
+        });
+      }
 
       const isAllowed =
         project.createdBy.toString() === userId ||
         project.members.some(m => m._id.toString() === userId);
 
       if (!isAllowed) {
-        return res.status(403).json({ message: "You do not have access to this project" });
+        return res.status(403).json({
+          message: "You do not have access to this project",
+        });
       }
 
       return res.status(200).json(project);
     } catch {
-      return res.status(500).json({ message: "Failed to fetch project" });
+      return res.status(500).json({
+        message: "Failed to fetch project",
+      });
     }
   }
 
@@ -85,13 +105,20 @@ export class ProjectController {
       const userId = req.user!.userId;
       const project = await Project.findById(req.params.id);
 
-      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
       if (project.createdBy.toString() !== userId) {
-        return res.status(403).json({ message: "Only the project owner can update this project" });
+        return res.status(403).json({
+          message: "Only the project owner can update this project",
+        });
       }
 
       if (project.status === "archived") {
-        return res.status(400).json({ message: "Archived projects cannot be updated" });
+        return res.status(400).json({
+          message: "Archived projects cannot be updated",
+        });
       }
 
       const oldStatus = project.status;
@@ -113,7 +140,9 @@ export class ProjectController {
 
       return res.status(200).json(project);
     } catch {
-      return res.status(500).json({ message: "Failed to update project" });
+      return res.status(500).json({
+        message: "Failed to update project",
+      });
     }
   }
 
@@ -123,13 +152,20 @@ export class ProjectController {
       const userId = req.user!.userId;
       const project = await Project.findById(req.params.id);
 
-      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
       if (project.createdBy.toString() !== userId) {
-        return res.status(403).json({ message: "Only the project owner can delete this project" });
+        return res.status(403).json({
+          message: "Only the project owner can delete this project",
+        });
       }
 
       if (project.status !== "archived") {
-        return res.status(400).json({ message: "Only archived projects can be deleted" });
+        return res.status(400).json({
+          message: "Only archived projects can be deleted",
+        });
       }
 
       const hasActiveTasks = await Task.exists({
@@ -138,13 +174,17 @@ export class ProjectController {
       });
 
       if (hasActiveTasks) {
-        return res.status(400).json({ message: "Project has active tasks and cannot be deleted" });
+        return res.status(400).json({
+          message: "Project has active tasks and cannot be deleted",
+        });
       }
 
       await project.deleteOne();
       return res.status(204).send();
     } catch {
-      return res.status(500).json({ message: "Failed to delete project" });
+      return res.status(500).json({
+        message: "Failed to delete project",
+      });
     }
   }
 
@@ -155,17 +195,25 @@ export class ProjectController {
       const { memberId } = req.body;
 
       const project = await Project.findById(req.params.id);
-      if (!project) return res.status(404).json({ message: "Project not found" });
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
 
       if (project.createdBy.toString() !== userId) {
-        return res.status(403).json({ message: "You are not authorized to manage this project" });
+        return res.status(403).json({
+          message: "You are not authorized to manage this project",
+        });
       }
 
       const userExists = await User.findById(memberId);
-      if (!userExists) return res.status(404).json({ message: "User does not exist" });
+      if (!userExists) {
+        return res.status(404).json({ message: "User does not exist" });
+      }
 
       if (project.members.some(m => m.toString() === memberId)) {
-        return res.status(400).json({ message: "User is already a member of this project" });
+        return res.status(400).json({
+          message: "User is already a member of this project",
+        });
       }
 
       project.members.push(new mongoose.Types.ObjectId(memberId));
@@ -173,17 +221,17 @@ export class ProjectController {
 
       return res.status(200).json(project);
     } catch {
-      return res.status(500).json({ message: "Failed to add member" });
+      return res.status(500).json({
+        message: "Failed to add member",
+      });
     }
   }
 
-  // ===================== PROJECT DASHBOARD =====================
+  // ===================== PROJECT DASHBOARD (DB-LEVEL COUNTING) =====================
   static async getProjectDashboard(req: AuthRequest, res: Response) {
     try {
       const { userId, role } = req.user!;
       const { projectId } = req.params;
-      const { memberId, taskId } = req.query;
-      const today = new Date();
 
       const project = await Project.findOne({
         _id: projectId,
@@ -191,78 +239,70 @@ export class ProjectController {
       });
 
       if (!project) {
-        return res.status(403).json({ message: "You do not have access to this project" });
-      }
-
-      if (role === "pm") {
-        const filter: any = { project: new mongoose.Types.ObjectId(projectId) };
-
-        if (memberId) {
-          if (!project.members.some(m => m.toString() === memberId)) {
-            return res.status(400).json({ message: "Member does not belong to this project" });
-          }
-          filter.assignedTo = new mongoose.Types.ObjectId(memberId as string);
-        }
-
-        if (taskId) {
-          filter._id = new mongoose.Types.ObjectId(taskId as string);
-        }
-
-        const tasks = await Task.find(filter).populate("assignedTo", "name email");
-
-        let completedTasks = 0;
-        let pendingTasks = 0;
-        let overdueTasks = 0;
-
-        tasks.forEach(task => {
-          if (task.status === "done") completedTasks++;
-          else {
-            pendingTasks++;
-            if (task.dueDate && new Date(task.dueDate) < today) overdueTasks++;
-          }
-        });
-
-        return res.status(200).json({
-          role: "pm",
-          project: {
-            projectId: project._id,
-            projectName: project.name,
-            projectStatus: project.status,
-          },
-          stats: { completedTasks, pendingTasks, overdueTasks },
-          tasks,
+        return res.status(403).json({
+          message: "You do not have access to this project",
         });
       }
 
-      const tasks = await Task.find({
+      const match: any = {
         project: new mongoose.Types.ObjectId(projectId),
-        assignedTo: new mongoose.Types.ObjectId(userId),
-      });
+      };
 
-      let completedTasks = 0;
-      let pendingTasks = 0;
-      let overdueTasks = 0;
+      if (role !== "pm") {
+        match.assignedTo = new mongoose.Types.ObjectId(userId);
+      }
 
-      tasks.forEach(task => {
-        if (task.status === "done") completedTasks++;
-        else {
-          pendingTasks++;
-          if (task.dueDate && new Date(task.dueDate) < today) overdueTasks++;
-        }
-      });
+      const statsAgg = await Task.aggregate([
+        { $match: match },
+        {
+          $group: {
+            _id: null,
+            completedTasks: {
+              $sum: { $cond: [{ $eq: ["$status", "done"] }, 1, 0] },
+            },
+            pendingTasks: {
+              $sum: { $cond: [{ $ne: ["$status", "done"] }, 1, 0] },
+            },
+            overdueTasks: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$status", "done"] },
+                      { $lt: ["$dueDate", new Date()] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]);
+
+      const stats = statsAgg[0] || {
+        completedTasks: 0,
+        pendingTasks: 0,
+        overdueTasks: 0,
+      };
+
+      const tasks = await Task.find(match);
 
       return res.status(200).json({
-        role: "member",
+        role,
         project: {
           projectId: project._id,
           projectName: project.name,
           projectStatus: project.status,
         },
-        stats: { completedTasks, pendingTasks, overdueTasks },
+        stats,
         tasks,
       });
     } catch {
-      return res.status(500).json({ message: "Failed to fetch project dashboard" });
+      return res.status(500).json({
+        message: "Failed to fetch project dashboard",
+      });
     }
   }
 }

@@ -26,97 +26,169 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
         ],
       });
 
-      let completedTasks = 0;
-      let pendingTasks = 0;
-      let overdueTasks = 0;
+      const projectIds = projects.map((p) => p._id);
 
-      const projectData = await Promise.all(
-        projects.map(async (project) => {
-          const tasks = await Task.find({ project: project._id }).populate(
-            "assignedTo",
-            "name email"
-          );
+      // ---------- AGGREGATED TASK STATS ----------
+      const statsAgg = await Task.aggregate([
+        { $match: { project: { $in: projectIds } } },
+        {
+          $group: {
+            _id: null,
+            completedTasks: {
+              $sum: { $cond: [{ $eq: ["$status", "done"] }, 1, 0] },
+            },
+            pendingTasks: {
+              $sum: { $cond: [{ $ne: ["$status", "done"] }, 1, 0] },
+            },
+            overdueTasks: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$status", "done"] },
+                      { $lt: ["$dueDate", today] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]);
 
-          tasks.forEach((task) => {
-            if (task.status === "done") {
-              completedTasks++;
-            } else {
-              pendingTasks++;
-              if (task.dueDate && new Date(task.dueDate) < today) {
-                overdueTasks++;
-              }
-            }
-          });
+      const stats = statsAgg[0] || {
+        completedTasks: 0,
+        pendingTasks: 0,
+        overdueTasks: 0,
+      };
 
-          return {
-            projectId: project._id,
-            projectName: project.name,
-            projectStatus: project.status,
-            tasks: tasks.map((task) => ({
-              taskId: task._id,
-              title: task.title,
-              status: task.status,
-              priority: task.priority,
-              dueDate: task.dueDate,
-              assignedTo: task.assignedTo,
-            })),
-          };
-        })
-      );
+      // ---------- PROJECT-WISE TASKS ----------
+      const tasksByProject = await Task.aggregate([
+        { $match: { project: { $in: projectIds } } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "assignedTo",
+            foreignField: "_id",
+            as: "assignedTo",
+          },
+        },
+        { $unwind: "$assignedTo" },
+        {
+          $group: {
+            _id: "$project",
+            tasks: {
+              $push: {
+                taskId: "$_id",
+                title: "$title",
+                status: "$status",
+                priority: "$priority",
+                dueDate: "$dueDate",
+                assignedTo: {
+                  _id: "$assignedTo._id",
+                  name: "$assignedTo.name",
+                  email: "$assignedTo.email",
+                },
+              },
+            },
+          },
+        },
+      ]);
+
+      const projectData = projects.map((project) => {
+        const taskGroup = tasksByProject.find(
+          (t) => t._id.toString() === project._id.toString()
+        );
+
+        return {
+          projectId: project._id,
+          projectName: project.name,
+          projectStatus: project.status,
+          tasks: taskGroup ? taskGroup.tasks : [],
+        };
+      });
 
       return res.status(200).json({
         role: "pm",
-        stats: {
-          completedTasks,
-          pendingTasks,
-          overdueTasks,
-        },
+        stats,
         projects: projectData,
       });
     }
 
     // ===================== MEMBER DASHBOARD =====================
-    const tasks = await Task.find({
-      assignedTo: new Types.ObjectId(userId),
-    }).populate("project", "name status");
+    const taskAgg = await Task.aggregate([
+      {
+        $match: {
+          assignedTo: new Types.ObjectId(userId),
+        },
+      },
+      {
+        $lookup: {
+          from: "projects",
+          localField: "project",
+          foreignField: "_id",
+          as: "project",
+        },
+      },
+      { $unwind: "$project" },
+      {
+        $group: {
+          _id: null,
+          completedTasks: {
+            $sum: { $cond: [{ $eq: ["$status", "done"] }, 1, 0] },
+          },
+          pendingTasks: {
+            $sum: { $cond: [{ $ne: ["$status", "done"] }, 1, 0] },
+          },
+          overdueTasks: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$status", "done"] },
+                    { $lt: ["$dueDate", today] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          tasks: {
+            $push: {
+              taskId: "$_id",
+              title: "$title",
+              status: "$status",
+              priority: "$priority",
+              dueDate: "$dueDate",
+              project: {
+                projectId: "$project._id",
+                projectName: "$project.name",
+                projectStatus: "$project.status",
+              },
+            },
+          },
+        },
+      },
+    ]);
 
-    let completedTasks = 0;
-    let pendingTasks = 0;
-    let overdueTasks = 0;
-
-    tasks.forEach((task) => {
-      if (task.status === "done") {
-        completedTasks++;
-      } else {
-        pendingTasks++;
-        if (task.dueDate && new Date(task.dueDate) < today) {
-          overdueTasks++;
-        }
-      }
-    });
+    const result = taskAgg[0] || {
+      completedTasks: 0,
+      pendingTasks: 0,
+      overdueTasks: 0,
+      tasks: [],
+    };
 
     return res.status(200).json({
       role: "member",
       stats: {
-        completedTasks,
-        pendingTasks,
-        overdueTasks,
+        completedTasks: result.completedTasks,
+        pendingTasks: result.pendingTasks,
+        overdueTasks: result.overdueTasks,
       },
-      tasks: tasks.map((task) => {
-        const project = task.project as any;
-        return {
-          taskId: task._id,
-          title: task.title,
-          status: task.status,
-          priority: task.priority,
-          dueDate: task.dueDate,
-          project: {
-            projectId: project._id,
-            projectName: project.name,
-            projectStatus: project.status,
-          },
-        };
-      }),
+      tasks: result.tasks,
     });
   } catch (error: any) {
     return res.status(500).json({

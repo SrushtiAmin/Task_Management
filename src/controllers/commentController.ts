@@ -6,7 +6,8 @@ import Project from "../models/Project";
 import { AuthRequest } from "../middleware/auth";
 
 export class CommentController {
-  // ADD COMMENT
+
+  // ===================== ADD COMMENT =====================
   static async addComment(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
@@ -23,25 +24,23 @@ export class CommentController {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      const isAssigned =
-        task.assignedTo.toString() === req.user.userId;
-
-      // Member → only own task
-      if (req.user.role !== "pm" && !isAssigned) {
-        return res.status(403).json({
-          message: "You can comment only on your assigned task",
-        });
+      // ---------- MEMBER ACCESS ----------
+      if (req.user.role !== "pm") {
+        if (task.assignedTo.toString() !== req.user.userId) {
+          return res.status(403).json({
+            message: "You can comment only on your assigned task",
+          });
+        }
       }
 
-      // PM → must be part of project
+      // ---------- PM ACCESS (DB-side) ----------
       if (req.user.role === "pm") {
-        const project = await Project.findById(task.project);
-        if (
-          !project ||
-          !project.members.some(
-            (m) => m.toString() === req.user!.userId
-          )
-        ) {
+        const hasAccess = await Project.exists({
+          _id: task.project,
+          members: req.user.userId,
+        });
+
+        if (!hasAccess) {
           return res.status(403).json({ message: "Access denied" });
         }
       }
@@ -58,7 +57,7 @@ export class CommentController {
     }
   }
 
-  // GET COMMENTS
+  // ===================== GET COMMENTS =====================
   static async getComments(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
@@ -70,21 +69,21 @@ export class CommentController {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      const isAssigned =
-        task.assignedTo.toString() === req.user.userId;
-
-      if (req.user.role !== "pm" && !isAssigned) {
-        return res.status(403).json({ message: "Access denied" });
+      // ---------- MEMBER ACCESS ----------
+      if (req.user.role !== "pm") {
+        if (task.assignedTo.toString() !== req.user.userId) {
+          return res.status(403).json({ message: "Access denied" });
+        }
       }
 
+      // ---------- PM ACCESS (DB-side) ----------
       if (req.user.role === "pm") {
-        const project = await Project.findById(task.project);
-        if (
-          !project ||
-          !project.members.some(
-            (m) => m.toString() === req.user!.userId
-          )
-        ) {
+        const hasAccess = await Project.exists({
+          _id: task.project,
+          members: req.user.userId,
+        });
+
+        if (!hasAccess) {
           return res.status(403).json({ message: "Access denied" });
         }
       }
@@ -99,7 +98,7 @@ export class CommentController {
     }
   }
 
-  // DELETE COMMENT
+  // ===================== DELETE COMMENT =====================
   static async deleteComment(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
@@ -116,28 +115,24 @@ export class CommentController {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      const isAssigned =
-        task.assignedTo.toString() === req.user.userId;
-
-      // Member → own comment + own task
+      // ---------- MEMBER RULE ----------
       if (req.user.role !== "pm") {
         if (
           comment.user.toString() !== req.user.userId ||
-          !isAssigned
+          task.assignedTo.toString() !== req.user.userId
         ) {
           return res.status(403).json({ message: "Forbidden" });
         }
       }
 
-      // PM → project member
+      // ---------- PM RULE (DB-side) ----------
       if (req.user.role === "pm") {
-        const project = await Project.findById(task.project);
-        if (
-          !project ||
-          !project.members.some(
-            (m) => m.toString() === req.user!.userId
-          )
-        ) {
+        const hasAccess = await Project.exists({
+          _id: task.project,
+          members: req.user.userId,
+        });
+
+        if (!hasAccess) {
           return res.status(403).json({ message: "Access denied" });
         }
       }
