@@ -160,6 +160,26 @@
  *         required: true
  *         schema:
  *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               assignedTo:
+ *                 type: string
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high, critical]
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *               status:
+ *                 type: string
+ *                 enum: [todo, in_progress, in_review, done]
  *     responses:
  *       200:
  *         description: Task updated
